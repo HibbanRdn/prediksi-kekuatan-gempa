@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 import gdown
 
 # =============================
-# DOWNLOAD MODEL DARI GOOGLE DRIVE
+# DOWNLOAD MODEL DARI GOOGLE DRIVE MENGGUNAKAN GDOWN
 # =============================
 MODEL_FILE = "bestmodel_gempa.pkl"
 MODEL_ID = "1OF8OtxUcD0fFdPp6Go0fqY5nxcYw8kIi"
@@ -32,7 +32,7 @@ st.markdown(
     Aplikasi ini memprediksi **kategori gempa bumi** berdasarkan data numerik menggunakan model *Random Forest* terlatih.
     Kamu bisa:
     - 📤 Upload file CSV, atau
-    - ✍️ Masukkan data secara manual menggunakan slider.
+    - ✍️ Masukkan data secara manual.
     """
 )
 st.divider()
@@ -102,10 +102,10 @@ with tab1:
         st.info("Silakan upload file CSV terlebih dahulu untuk memulai prediksi.")
 
 # =============================
-# MODE 2: INPUT MANUAL DENGAN SLIDER
+# MODE 2: INPUT MANUAL (USER AWAM)
 # =============================
 with tab2:
-    st.write("Masukkan data gempa secara manual dengan slider:")
+    st.write("Masukkan data gempa secara manual di bawah ini untuk melakukan prediksi:")
 
     if model is not None:
         if hasattr(model, "feature_names_in_"):
@@ -113,35 +113,19 @@ with tab2:
         else:
             cols = ["magnitudo", "kedalaman", "lintang", "bujur"]
 
-        with st.form("input_form_slider"):
-            inputs = {}
-            # Slider friendly untuk setiap kolom
-            for col in cols:
-                if col == "magnitudo":
-                    inputs[col] = st.slider(
-                        "Magnitudo Gempa (Skala Richter)",
-                        min_value=0.0, max_value=10.0, value=5.0, step=0.1,
-                        help="Skala Richter, contoh: 5.6"
-                    )
-                elif col == "kedalaman":
-                    inputs[col] = st.slider(
-                        "Kedalaman Gempa (km)",
-                        min_value=0, max_value=700, value=10, step=1,
-                        help="Kedalaman dari permukaan bumi dalam kilometer"
-                    )
-                elif col == "lintang":
-                    inputs[col] = st.slider(
-                        "Koordinat Lintang (Latitude)",
-                        min_value=-90.0, max_value=90.0, value=0.0, step=0.1,
-                        help="Positif = Utara, Negatif = Selatan"
-                    )
-                elif col == "bujur":
-                    inputs[col] = st.slider(
-                        "Koordinat Bujur (Longitude)",
-                        min_value=-180.0, max_value=180.0, value=0.0, step=0.1,
-                        help="Positif = Timur, Negatif = Barat"
-                    )
+        # Mapping kolom ke label ramah + tooltip
+        friendly_labels = {
+            "magnitudo": ("Magnitudo Gempa", "Contoh: 5.6 – Skala Richter"),
+            "kedalaman": ("Kedalaman Gempa (km)", "Contoh: 10 – Kedalaman dari permukaan"),
+            "lintang": ("Koordinat Lintang (Latitude)", "Contoh: -5.4 – Positif = Utara, Negatif = Selatan"),
+            "bujur": ("Koordinat Bujur (Longitude)", "Contoh: 105.2 – Positif = Timur, Negatif = Barat")
+        }
 
+        with st.form("input_form"):
+            inputs = {}
+            for col in cols:
+                label, tooltip = friendly_labels.get(col, (col, ""))
+                inputs[col] = st.number_input(label, value=0.0, help=tooltip)
             submit = st.form_submit_button("Prediksi Sekarang 🔮")
 
         if submit:
