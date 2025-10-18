@@ -1,9 +1,7 @@
 streamlit==1.39.0
-pandas==2.2.2
-numpy==1.26.4
-scikit-learn==1.5.2
-xgboost==2.1.1
-matplotlib==3.9.2
-pydeck==0.9.1
+pandas==2.2.3
 joblib==1.4.2
 gdown==5.2.0
+pydeck==0.9.1
+scikit-learn==1.5.2
+matplotlib==3.9.2
