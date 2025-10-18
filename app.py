@@ -114,37 +114,35 @@ with tab2:
         else:
             cols = ["magnitudo", "kedalaman", "lintang", "bujur"]
 
-        with st.form("input_form_slider"):
-            inputs = {}
-            for col in cols:
-                if col == "magnitudo":
-                    inputs[col] = st.slider(
-                        "Magnitudo Gempa (Skala Richter)",
-                        min_value=0.0, max_value=10.0, value=5.0, step=0.1,
-                        help="Skala Richter, contoh: 5.6"
-                    )
-                elif col == "kedalaman":
-                    inputs[col] = st.slider(
-                        "Kedalaman Gempa (km)",
-                        min_value=0, max_value=700, value=10, step=1,
-                        help="Kedalaman dari permukaan bumi dalam kilometer"
-                    )
-                elif col == "lintang":
-                    inputs[col] = st.slider(
-                        "Koordinat Lintang (Latitude)",
-                        min_value=-90.0, max_value=90.0, value=0.0, step=0.1,
-                        help="Positif = Utara, Negatif = Selatan"
-                    )
-                elif col == "bujur":
-                    inputs[col] = st.slider(
-                        "Koordinat Bujur (Longitude)",
-                        min_value=-180.0, max_value=180.0, value=0.0, step=0.1,
-                        help="Positif = Timur, Negatif = Barat"
-                    )
+        inputs = {}
+        # Slider untuk setiap kolom
+        for col in cols:
+            if col == "magnitudo":
+                inputs[col] = st.slider(
+                    "Magnitudo Gempa (Skala Richter)",
+                    0.0, 10.0, 5.0, 0.1,
+                    help="Skala Richter, contoh: 5.6"
+                )
+            elif col == "kedalaman":
+                inputs[col] = st.slider(
+                    "Kedalaman Gempa (km)",
+                    0, 700, 10, 1,
+                    help="Kedalaman dari permukaan bumi dalam kilometer"
+                )
+            elif col == "lintang":
+                inputs[col] = st.slider(
+                    "Koordinat Lintang (Latitude)",
+                    -90.0, 90.0, 0.0, 0.1,
+                    help="Positif = Utara, Negatif = Selatan"
+                )
+            elif col == "bujur":
+                inputs[col] = st.slider(
+                    "Koordinat Bujur (Longitude)",
+                    -180.0, 180.0, 0.0, 0.1,
+                    help="Positif = Timur, Negatif = Barat"
+                )
 
-            submit = st.form_submit_button("Prediksi Sekarang 🔮")
-
-        if submit:
+        if st.button("Prediksi Sekarang 🔮"):
             try:
                 input_df = pd.DataFrame([inputs])
                 prediction = model.predict(input_df)[0]
