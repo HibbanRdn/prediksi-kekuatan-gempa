@@ -1,3 +1,4 @@
+import os
 import streamlit as st
 import pandas as pd
 import joblib
@@ -5,15 +6,16 @@ import pydeck as pdk
 
 # =============================
 
-# 1️⃣ Judul dan Deskripsi
+# 1️⃣ Konfigurasi Halaman
 
 # =============================
 
 st.set_page_config(page_title="Prediksi Potensi Gempa Kuat", layout="wide")
 st.title("🌋 Prediksi Potensi Gempa Kuat di Indonesia")
 st.markdown("""
-Aplikasi ini memprediksi apakah sebuah kejadian gempa termasuk **gempa kuat (magnitudo ≥ 6)** berdasarkan parameter spasial dan temporal.
-Model dilatih menggunakan data historis gempa dari BMKG & USGS.
+Aplikasi ini memprediksi apakah sebuah kejadian gempa termasuk **gempa kuat (magnitudo ≥ 6)**
+berdasarkan parameter spasial dan temporal.
+Model dilatih menggunakan data historis gempa dari **BMKG & USGS** dengan pendekatan **CRISP-DM**.
 """)
 
 # =============================
@@ -22,8 +24,14 @@ Model dilatih menggunakan data historis gempa dari BMKG & USGS.
 
 # =============================
 
-MODEL_PATH = "best_model_gempa.pkl"
+BASE_DIR = os.path.dirname(os.path.abspath(**file**))
+MODEL_PATH = os.path.join(BASE_DIR, "best_model_gempa.pkl")
+
+try:
 model = joblib.load(MODEL_PATH)
+except FileNotFoundError:
+st.error("❌ File model tidak ditemukan. Pastikan `best_model_gempa.pkl` ada di direktori yang sama dengan app.py.")
+st.stop()
 
 # =============================
 
@@ -63,12 +71,16 @@ pred = model.predict(input_data)[0]
 kategori = "Gempa Kuat (≥6)" if pred == 1 else "Bukan Gempa Kuat (<6)"
 
 ```
-st.subheader("Hasil Prediksi:")
-st.metric(label="Kategori", value=kategori)
-st.metric(label="Probabilitas Gempa Kuat", value=f"{proba*100:.2f}%")
+# Hasil Prediksi
+st.subheader("📊 Hasil Prediksi")
+col1, col2 = st.columns(2)
+with col1:
+    st.metric(label="Kategori", value=kategori)
+with col2:
+    st.metric(label="Probabilitas Gempa Kuat", value=f"{proba*100:.2f}%")
 
 # Visualisasi lokasi gempa
-st.subheader("Peta Lokasi")
+st.subheader("🗺️ Peta Lokasi Gempa")
 layer = pdk.Layer(
     "ScatterplotLayer",
     data=input_data,
@@ -87,4 +99,4 @@ st.pydeck_chart(pdk.Deck(layers=[layer], initial_view_state=view_state))
 # =============================
 
 st.markdown("---")
-st.markdown("Dikembangkan oleh **M. Hibban Ramadhan** • Data: BMKG & USGS • Model: Random Forest/XGBoost (CRISP-DM Pipeline)")
+st.markdown("Dikembangkan oleh **M. Hibban Ramadhan** • Data: BMKG & USGS • Model: Random Forest/XGBoost • Pipeline: CRISP-DM")
