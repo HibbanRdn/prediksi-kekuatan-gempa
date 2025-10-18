@@ -4,7 +4,8 @@ import pandas as pd
 import joblib
 import matplotlib.pyplot as plt
 import gdown
-import pydeck as pdk  # Untuk visualisasi peta
+import pydeck as pdk
+import numpy as np
 
 # =============================
 # DOWNLOAD MODEL DARI GOOGLE DRIVE
@@ -28,14 +29,12 @@ st.set_page_config(
 )
 
 st.title("🌋 Prediksi Kategori Gempa Berdasarkan Data Input")
-st.markdown(
-    """
-    Aplikasi ini memprediksi **kategori gempa bumi** berdasarkan data numerik menggunakan model *Random Forest* terlatih.
-    Kamu bisa:
-    - 📤 Upload file CSV, atau
-    - ✍️ Masukkan data secara manual menggunakan slider dan lihat preview lokasi di peta.
-    """
-)
+st.markdown("""
+Aplikasi ini memprediksi **kategori gempa bumi** berdasarkan data numerik menggunakan model *Random Forest* terlatih.
+Kamu bisa:
+- 📤 Upload file CSV, atau
+- ✍️ Masukkan data secara manual menggunakan slider dan lihat preview lokasi di peta.
+""")
 st.divider()
 
 # =============================
@@ -51,6 +50,28 @@ def load_model():
         return None
 
 model = load_model()
+
+# =============================
+# FUNCTION FEATURE IMPORTANCE
+# =============================
+def plot_feature_importance(pipe, feature_names, title="Feature Importance"):
+    if 'clf' in pipe.named_steps:
+        clf = pipe.named_steps['clf']
+    else:
+        clf = pipe
+
+    if hasattr(clf, "feature_importances_"):
+        importances = clf.feature_importances_
+        idx = np.argsort(importances)[::-1]
+
+        fig, ax = plt.subplots(figsize=(8,4))
+        ax.bar([feature_names[i] for i in idx], importances[idx])
+        ax.set_title(title)
+        ax.set_xticklabels([feature_names[i] for i in idx], rotation=45)
+        plt.tight_layout()
+        st.pyplot(fig)
+    else:
+        st.warning("Model tidak mendukung feature_importances_")
 
 # =============================
 # MODE INPUT
@@ -109,75 +130,74 @@ with tab2:
     st.subheader("🧮 Input Manual Gempa")
 
     if model is not None:
-        # Ambil nama fitur dari model atau gunakan default
+        # Ambil nama fitur dari pipeline
         if hasattr(model, "feature_names_in_"):
-            cols = model.feature_names_in_
+            FEATURES = model.feature_names_in_
         else:
-            cols = ["magnitudo", "kedalaman", "lintang", "bujur"]
+            FEATURES = ["lintang","bujur","magnitudo","kedalaman","tahun","bulan","hari"]
 
-        # ====== Slider Manual ======
-        magnitudo = st.slider("Magnitudo Gempa (Skala Richter)", 0.0, 10.0, 5.0, 0.1,
-                              help="Skala Richter, contoh: 5.6")
-        kedalaman = st.slider("Kedalaman Gempa (km)", 0, 700, 10, 1,
-                              help="Kedalaman dari permukaan bumi dalam kilometer")
-        lintang = st.slider("Koordinat Lintang (Latitude)", -90.0, 90.0, 0.0, 0.1,
-                            help="Positif = Utara, Negatif = Selatan")
-        bujur = st.slider("Koordinat Bujur (Longitude)", -180.0, 180.0, 0.0, 0.1,
-                          help="Positif = Timur, Negatif = Barat")
-
-        # ====== Scaling Manual Input agar prediksi realistis ======
-        # Sesuaikan mean & std dengan data training model
-        feature_stats = {
-            "magnitudo": {"mean": 5.2, "std": 1.0},
-            "kedalaman": {"mean": 35, "std": 50},
-            "lintang": {"mean": -2.0, "std": 15.0},
-            "bujur": {"mean": 117.0, "std": 15.0}
-        }
+        # Slider/input manual
+        magnitudo = st.slider("Magnitudo Gempa (Skala Richter)", 0.0, 10.0, 5.0, 0.1)
+        kedalaman = st.slider("Kedalaman Gempa (km)", 0, 700, 10, 1)
+        lintang = st.slider("Koordinat Lintang (Latitude)", -90.0, 90.0, 0.0, 0.1)
+        bujur = st.slider("Koordinat Bujur (Longitude)", -180.0, 180.0, 0.0, 0.1)
+        tahun = st.number_input("Tahun", min_value=1900, max_value=2100, value=2025)
+        bulan = st.slider("Bulan", 1, 12, 1)
+        hari = st.slider("Hari", 1, 31, 1)
 
         if st.button("Prediksi Sekarang 🔮"):
             try:
-                input_df = pd.DataFrame([{
-                    "magnitudo": magnitudo,
-                    "kedalaman": kedalaman,
-                    "lintang": lintang,
-                    "bujur": bujur
-                }], columns=model.feature_names_in_)
+                # Buat input sesuai urutan FEATURES
+                X_new = []
+                for f in FEATURES:
+                    if f == "magnitudo":
+                        X_new.append(magnitudo)
+                    elif f == "kedalaman":
+                        X_new.append(kedalaman)
+                    elif f == "lintang":
+                        X_new.append(lintang)
+                    elif f == "bujur":
+                        X_new.append(bujur)
+                    elif f == "tahun":
+                        X_new.append(tahun)
+                    elif f == "bulan":
+                        X_new.append(bulan)
+                    elif f == "hari":
+                        X_new.append(hari)
+                    else:
+                        X_new.append(0)  # default jika fitur tidak ada
 
-                # Scaling
-                for col in input_df.columns:
-                    if col in feature_stats:
-                        input_df[col] = (input_df[col] - feature_stats[col]["mean"]) / feature_stats[col]["std"]
-
-                prediction = model.predict(input_df)[0]
+                prediction = model.predict([X_new])[0]
 
                 st.success(f"🌍 Kategori Gempa: {prediction}")
                 st.metric(label="Prediksi Akhir", value=prediction)
 
-                # ====== PETA LOKASI ======
+                # Preview peta
                 st.subheader("🗺️ Lokasi Gempa")
-                st.pydeck_chart(
-                    pdk.Deck(
-                        map_style="https://basemaps.cartocdn.com/gl/positron-gl-style/style.json",
-                        initial_view_state=pdk.ViewState(
-                            latitude=lintang,
-                            longitude=bujur,
-                            zoom=4,
-                            pitch=0
-                        ),
-                        layers=[
-                            pdk.Layer(
-                                "ScatterplotLayer",
-                                data=pd.DataFrame([{"lintang": lintang, "bujur": bujur}]),
-                                get_position='[bujur, lintang]',
-                                get_color='[255, 0, 0]',
-                                get_radius=50000,
-                                pickable=True
-                            )
-                        ]
-                    )
-                )
+                st.pydeck_chart(pdk.Deck(
+                    map_style="https://basemaps.cartocdn.com/gl/positron-gl-style/style.json",
+                    initial_view_state=pdk.ViewState(
+                        latitude=lintang,
+                        longitude=bujur,
+                        zoom=4,
+                        pitch=0,
+                    ),
+                    layers=[
+                        pdk.Layer(
+                            "ScatterplotLayer",
+                            data=pd.DataFrame([{"lintang": lintang, "bujur": bujur}]),
+                            get_position='[bujur, lintang]',
+                            get_color='[255, 0, 0]',
+                            get_radius=50000,
+                            pickable=True
+                        )
+                    ]
+                ))
+
+                # Tampilkan feature importance jika ada
+                plot_feature_importance(model, FEATURES, title="Feature Importance - Model")
 
             except Exception as e:
                 st.error(f"Gagal melakukan prediksi: {e}")
     else:
-        st.warning("Model belum tersedia. Pastikan file `bestmodel_gempa.pkl` ada di direktori yang sama.")
+        st.warning("Model belum tersedia. Pastikan file pipeline ada.")
