@@ -109,40 +109,42 @@ with tab2:
     st.subheader("🧮 Input Manual Gempa")
 
     if model is not None:
-        # Slider langsung tampil tanpa form
+        # Ambil nama fitur dari model
+        if hasattr(model, "feature_names_in_"):
+            cols = model.feature_names_in_
+        else:
+            cols = ["lat", "lon", "depth", "magnitudo"]  # sesuai pipeline
+
+        # Slider input manual
+        lat = st.slider("Lintang (Latitude)", -90.0, 90.0, 0.0, 0.1)
+        lon = st.slider("Bujur (Longitude)", -180.0, 180.0, 0.0, 0.1)
+        depth = st.slider("Kedalaman Gempa (km)", 0, 700, 10, 1)
         magnitudo = st.slider("Magnitudo Gempa (Skala Richter)", 0.0, 10.0, 5.0, 0.1)
-        kedalaman = st.slider("Kedalaman Gempa (km)", 0, 700, 10, 1)
-        lintang = st.slider("Koordinat Lintang (Latitude)", -90.0, 90.0, 0.0, 0.1)
-        bujur = st.slider("Koordinat Bujur (Longitude)", -180.0, 180.0, 0.0, 0.1)
-        # Tambahkan fitur lain sesuai pipeline jika ada, misal tahun, bulan, dll
-        tahun = st.number_input("Tahun", min_value=1900, max_value=2100, value=2025)
-        bulan = st.slider("Bulan", 1, 12, 1)
-        hari = st.slider("Hari", 1, 31, 1)
 
         if st.button("Prediksi Sekarang 🔮"):
             try:
-                # Input ke pipeline sebagai array 2D
-                X_new = [[lintang, bujur, magnitudo, kedalaman, tahun]]  # contoh, sesuaikan urutan fitur pipeline
-                prediction = model.predict(X_new)[0]
+                # Buat DataFrame input sesuai urutan FEATURES pipeline
+                input_df = pd.DataFrame([[lat, lon, depth, magnitudo]], columns=cols)
+                prediction = model.predict(input_df)[0]
 
                 st.success(f"🌍 Kategori Gempa: {prediction}")
                 st.metric(label="Prediksi Akhir", value=prediction)
 
-                # Preview peta
+                # Preview peta dengan OpenStreetMap gratis
                 st.subheader("🗺️ Lokasi Gempa")
                 st.pydeck_chart(pdk.Deck(
                     map_style="https://basemaps.cartocdn.com/gl/positron-gl-style/style.json",
                     initial_view_state=pdk.ViewState(
-                        latitude=lintang,
-                        longitude=bujur,
+                        latitude=lat,
+                        longitude=lon,
                         zoom=4,
                         pitch=0,
                     ),
                     layers=[
                         pdk.Layer(
                             "ScatterplotLayer",
-                            data=pd.DataFrame([{"lintang": lintang, "bujur": bujur}]),
-                            get_position='[bujur, lintang]',
+                            data=pd.DataFrame([{"lat": lat, "lon": lon}]),
+                            get_position='[lon, lat]',
                             get_color='[255, 0, 0]',
                             get_radius=50000,
                             pickable=True
