@@ -13,7 +13,7 @@ MODEL_ID = "1OF8OtxUcD0fFdPp6Go0fqY5nxcYw8kIi"
 MODEL_URL = f"https://drive.google.com/uc?id={MODEL_ID}"
 
 if not os.path.exists(MODEL_FILE):
-    st.info("📥 Mengunduh model gempa dari Google Drive...")
+    st.info("📥 Menyiapkan model..")
     gdown.download(MODEL_URL, MODEL_FILE, quiet=False)
     st.success("✅ Model berhasil diunduh!")
 
