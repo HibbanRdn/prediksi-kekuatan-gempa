@@ -29,7 +29,7 @@ Model dilatih menggunakan data historis gempa dari **BMKG & USGS** dengan pendek
 # =============================
 
 MODEL_FILE = "best_model_gempa.pkl"
-MODEL_ID = "1kY3dqUueLood8WNPU5vK39GZI49D0FpH"  # ID Google Drive model milikmu
+MODEL_ID = "1kY3dqUueLood8WNPU5vK39GZI49D0FpH"
 MODEL_URL = f"[https://drive.google.com/uc?id={MODEL_ID}](https://drive.google.com/uc?id={MODEL_ID})"
 
 if not os.path.exists(MODEL_FILE):
@@ -90,9 +90,6 @@ pred = model.predict(input_data)[0]
 kategori = "Gempa Kuat (≥6)" if pred == 1 else "Bukan Gempa Kuat (<6)"
 
 ```
-    # =============================
-    # 4.1 Hasil Prediksi
-    # =============================
     st.subheader("📊 Hasil Prediksi")
     col1, col2 = st.columns(2)
     with col1:
@@ -100,9 +97,6 @@ kategori = "Gempa Kuat (≥6)" if pred == 1 else "Bukan Gempa Kuat (<6)"
     with col2:
         st.metric(label="Probabilitas Gempa Kuat", value=f"{proba*100:.2f}%")
 
-    # =============================
-    # 4.2 Histogram Probabilitas
-    # =============================
     st.subheader("📈 Distribusi Probabilitas Prediksi")
     fig, ax = plt.subplots()
     ax.bar(["Bukan Gempa Kuat", "Gempa Kuat"], [1 - proba, proba], color=["skyblue", "salmon"])
@@ -113,9 +107,6 @@ kategori = "Gempa Kuat (≥6)" if pred == 1 else "Bukan Gempa Kuat (<6)"
         ax.text(i, v + 0.02, f"{v*100:.1f}%", ha="center", fontsize=10)
     st.pyplot(fig)
 
-    # =============================
-    # 4.3 Visualisasi lokasi gempa
-    # =============================
     st.subheader("🗺️ Peta Lokasi Gempa")
     layer = pdk.Layer(
         "ScatterplotLayer",
