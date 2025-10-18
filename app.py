@@ -26,7 +26,7 @@ Model dilatih menggunakan data historis gempa dari **BMKG & USGS** dengan pendek
 # =============================
 
 MODEL_FILE = "best_model_gempa.pkl"
-MODEL_ID = "1kY3dqUueLood8WNPU5vK39GZI49D0FpH"  # ganti dengan ID Google Drive model kamu
+MODEL_ID = "1kY3dqUueLood8WNPU5vK39GZI49D0FpH"  # ID Google Drive model milikmu
 MODEL_URL = f"[https://drive.google.com/uc?id={MODEL_ID}](https://drive.google.com/uc?id={MODEL_ID})"
 
 if not os.path.exists(MODEL_FILE):
