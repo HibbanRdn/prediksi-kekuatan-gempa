@@ -30,7 +30,7 @@ st.set_page_config(
 st.title("🌋 Prediksi Kategori Gempa Berdasarkan Data Input")
 st.markdown(
     """
-    Aplikasi ini memprediksi **kelas gempa bumi** berdasarkan data numerik menggunakan model *Random Forest* terlatih.
+    Aplikasi ini memprediksi **kategori gempa bumi** berdasarkan data numerik menggunakan model *Random Forest* terlatih.
     Kamu bisa:
     - 📤 Upload file CSV, atau
     - ✍️ Masukkan data secara manual menggunakan slider dan lihat preview lokasi di peta.
@@ -103,65 +103,57 @@ with tab1:
         st.info("Silakan upload file CSV terlebih dahulu untuk memulai prediksi.")
 
 # =============================
-# MODE 2: INPUT MANUAL
+# MODE 2: INPUT MANUAL DENGAN SLIDER & PETA GRATIS
 # =============================
 with tab2:
     st.subheader("🧮 Input Manual Gempa")
 
     if model is not None:
-        cols = model.feature_names_in_  # ambil semua fitur dari model
+        # Ambil nama fitur dari model atau gunakan default
+        if hasattr(model, "feature_names_in_"):
+            cols = model.feature_names_in_
+        else:
+            cols = ["magnitudo", "kedalaman", "lintang", "bujur"]
 
-        # Slider input manual untuk fitur yang dipakai model
-        lat = st.slider("Lintang (Latitude)", -90.0, 90.0, 0.0, 0.1)
-        lon = st.slider("Bujur (Longitude)", -180.0, 180.0, 0.0, 0.1)
-        depth = st.slider("Kedalaman Gempa (km)", 0, 700, 10, 1)
-        year = st.number_input("Tahun Gempa", 1900, 2100, 2025)
-        month = st.slider("Bulan Gempa", 1, 12, 1)
-
-        # Slider magnitudo tetap untuk info pengguna, tapi **tidak masuk ke model**
-        magnitudo = st.slider("Magnitudo Gempa (Skala Richter)", 0.0, 10.0, 5.0, 0.1)
+        # Slider langsung tampil tanpa form
+        magnitudo = st.slider("Magnitudo Gempa (Skala Richter)", 0.0, 10.0, 5.0, 0.1,
+                              help="Skala Richter, contoh: 5.6")
+        kedalaman = st.slider("Kedalaman Gempa (km)", 0, 700, 10, 1,
+                              help="Kedalaman dari permukaan bumi dalam kilometer")
+        lintang = st.slider("Koordinat Lintang (Latitude)", -90.0, 90.0, 0.0, 0.1,
+                            help="Positif = Utara, Negatif = Selatan")
+        bujur = st.slider("Koordinat Bujur (Longitude)", -180.0, 180.0, 0.0, 0.1,
+                          help="Positif = Timur, Negatif = Barat")
 
         if st.button("Prediksi Sekarang 🔮"):
             try:
-                # Buat input dict otomatis untuk semua fitur model
-                input_dict = {}
-                for c in cols:
-                    if c == "lat":
-                        input_dict[c] = lat
-                    elif c == "lon":
-                        input_dict[c] = lon
-                    elif c == "depth":
-                        input_dict[c] = depth
-                    elif c == "year":
-                        input_dict[c] = year
-                    elif c == "month":
-                        input_dict[c] = month
-                    else:
-                        input_dict[c] = 0  # fitur lain diisi default 0
-
-                input_df = pd.DataFrame([input_dict])
+                input_df = pd.DataFrame([{
+                    "magnitudo": magnitudo,
+                    "kedalaman": kedalaman,
+                    "lintang": lintang,
+                    "bujur": bujur
+                }], columns=model.feature_names_in_)
 
                 prediction = model.predict(input_df)[0]
+
                 st.success(f"🌍 Kategori Gempa: {prediction}")
                 st.metric(label="Prediksi Akhir", value=prediction)
 
-                st.info(f"Magnitudo yang dimasukkan: {magnitudo} SR")
-
-                # Preview peta
+                # Preview peta dengan OpenStreetMap gratis
                 st.subheader("🗺️ Lokasi Gempa")
                 st.pydeck_chart(pdk.Deck(
                     map_style="https://basemaps.cartocdn.com/gl/positron-gl-style/style.json",
                     initial_view_state=pdk.ViewState(
-                        latitude=lat,
-                        longitude=lon,
+                        latitude=lintang,
+                        longitude=bujur,
                         zoom=4,
                         pitch=0,
                     ),
                     layers=[
                         pdk.Layer(
                             "ScatterplotLayer",
-                            data=pd.DataFrame([{"lat": lat, "lon": lon}]),
-                            get_position='[lon, lat]',
+                            data=pd.DataFrame([{"lintang": lintang, "bujur": bujur}]),
+                            get_position='[bujur, lintang]',
                             get_color='[255, 0, 0]',
                             get_radius=50000,
                             pickable=True
@@ -171,3 +163,5 @@ with tab2:
 
             except Exception as e:
                 st.error(f"Gagal melakukan prediksi: {e}")
+    else:
+        st.warning("Model belum tersedia. Pastikan file `bestmodel_gempa.pkl` ada di direktori yang sama.")
