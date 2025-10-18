@@ -72,7 +72,6 @@ with tab1:
             try:
                 if hasattr(model, "feature_names_in_"):
                     expected_features = model.feature_names_in_
-                    # Sesuaikan kolom agar cocok dengan model
                     data = data.reindex(columns=expected_features, fill_value=0)
 
                 pred = model.predict(data)
@@ -110,58 +109,51 @@ with tab2:
     st.subheader("🧮 Input Manual Gempa")
 
     if model is not None:
+        # Ambil nama fitur dari model atau gunakan default
         if hasattr(model, "feature_names_in_"):
-            cols = list(model.feature_names_in_)
+            cols = model.feature_names_in_
         else:
-            cols = ["lat", "lon", "depth", "magnitudo"]
+            cols = ["magnitudo", "kedalaman", "lintang", "bujur"]
 
-        # Slider input utama
-        lat = st.slider("Lintang (Latitude)", -90.0, 90.0, 0.0, 0.1)
-        lon = st.slider("Bujur (Longitude)", -180.0, 180.0, 0.0, 0.1)
-        depth = st.slider("Kedalaman Gempa (km)", 0, 700, 10, 1)
-        magnitudo = st.slider("Magnitudo Gempa (Skala Richter)", 0.0, 10.0, 5.0, 0.1)
+        # Slider langsung tampil tanpa form
+        magnitudo = st.slider("Magnitudo Gempa (Skala Richter)", 0.0, 10.0, 5.0, 0.1,
+                              help="Skala Richter, contoh: 5.6")
+        kedalaman = st.slider("Kedalaman Gempa (km)", 0, 700, 10, 1,
+                              help="Kedalaman dari permukaan bumi dalam kilometer")
+        lintang = st.slider("Koordinat Lintang (Latitude)", -90.0, 90.0, 0.0, 0.1,
+                            help="Positif = Utara, Negatif = Selatan")
+        bujur = st.slider("Koordinat Bujur (Longitude)", -180.0, 180.0, 0.0, 0.1,
+                          help="Positif = Timur, Negatif = Barat")
 
         if st.button("Prediksi Sekarang 🔮"):
             try:
-                # Buat input dict sesuai dengan fitur model
-                input_dict = {}
-                for c in cols:
-                    if c.lower() in ["lat", "latitude"]:
-                        input_dict[c] = lat
-                    elif c.lower() in ["lon", "longitude"]:
-                        input_dict[c] = lon
-                    elif c.lower() == "depth":
-                        input_dict[c] = depth
-                    elif c.lower() in ["mag", "magnitudo", "magnitude"]:
-                        input_dict[c] = magnitudo
-                    else:
-                        # Jika model punya kolom lain (misalnya year, month, dll)
-                        input_dict[c] = 0  # nilai default
-
-                input_df = pd.DataFrame([input_dict])
-
-                # Pastikan kolom sesuai urutan model
-                input_df = input_df.reindex(columns=cols, fill_value=0)
+                input_df = pd.DataFrame([{
+                    "magnitudo": magnitudo,
+                    "kedalaman": kedalaman,
+                    "lintang": lintang,
+                    "bujur": bujur
+                }], columns=model.feature_names_in_)
 
                 prediction = model.predict(input_df)[0]
+
                 st.success(f"🌍 Kategori Gempa: {prediction}")
                 st.metric(label="Prediksi Akhir", value=prediction)
 
-                # Preview lokasi gempa di peta
+                # Preview peta dengan OpenStreetMap gratis
                 st.subheader("🗺️ Lokasi Gempa")
                 st.pydeck_chart(pdk.Deck(
-                    map_style="https://basemaps.cartocdn.com/gl/positron-gl-style.json",
+                    map_style="https://basemaps.cartocdn.com/gl/positron-gl-style/style.json",
                     initial_view_state=pdk.ViewState(
-                        latitude=lat,
-                        longitude=lon,
+                        latitude=lintang,
+                        longitude=bujur,
                         zoom=4,
                         pitch=0,
                     ),
                     layers=[
                         pdk.Layer(
                             "ScatterplotLayer",
-                            data=pd.DataFrame([{"lat": lat, "lon": lon}]),
-                            get_position='[lon, lat]',
+                            data=pd.DataFrame([{"lintang": lintang, "bujur": bujur}]),
+                            get_position='[bujur, lintang]',
                             get_color='[255, 0, 0]',
                             get_radius=50000,
                             pickable=True
@@ -171,6 +163,5 @@ with tab2:
 
             except Exception as e:
                 st.error(f"Gagal melakukan prediksi: {e}")
-
     else:
         st.warning("Model belum tersedia. Pastikan file `bestmodel_gempa.pkl` ada di direktori yang sama.")
