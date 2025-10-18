@@ -1,149 +1,90 @@
-import os
 import streamlit as st
 import pandas as pd
 import joblib
-import matplotlib.pyplot as plt
-import gdown
-import pydeck as pdk  # Untuk visualisasi peta
+import pydeck as pdk
 
 # =============================
-# DOWNLOAD MODEL DARI GOOGLE DRIVE
-# =============================
-MODEL_FILE = "model_klasifikasi_gempa.pkl"
-MODEL_ID = "15ZNnOsumDX3iuOtu5eSdpKrksfd7bccu"  # ganti dengan ID model kamu di Google Drive
-MODEL_URL = f"https://drive.google.com/uc?id={MODEL_ID}"
 
-if not os.path.exists(MODEL_FILE):
-    st.info("📥 Menyiapkan model...")
-    gdown.download(MODEL_URL, MODEL_FILE, quiet=False)
-    st.success("✅ Model berhasil diunduh!")
+# 1️⃣ Judul dan Deskripsi
 
 # =============================
-# CONFIG & HEADER
+
+st.set_page_config(page_title="Prediksi Potensi Gempa Kuat", layout="wide")
+st.title("🌋 Prediksi Potensi Gempa Kuat di Indonesia")
+st.markdown("""
+Aplikasi ini memprediksi apakah sebuah kejadian gempa termasuk **gempa kuat (magnitudo ≥ 6)** berdasarkan parameter spasial dan temporal.
+Model dilatih menggunakan data historis gempa dari BMKG & USGS.
+""")
+
 # =============================
-st.set_page_config(
-    page_title="🌋 Prediksi Kategori Gempa",
-    page_icon="🌋",
-    layout="wide"
+
+# 2️⃣ Load Model
+
+# =============================
+
+MODEL_PATH = "best_model_gempa.pkl"
+model = joblib.load(MODEL_PATH)
+
+# =============================
+
+# 3️⃣ Input Pengguna
+
+# =============================
+
+st.sidebar.header("Masukkan Parameter Gempa")
+
+latitude = st.sidebar.number_input("Latitude (Lintang)", min_value=-11.0, max_value=6.0, value=-2.5, step=0.1)
+longitude = st.sidebar.number_input("Longitude (Bujur)", min_value=94.0, max_value=142.0, value=118.0, step=0.1)
+depth = st.sidebar.number_input("Kedalaman (km)", min_value=0.0, max_value=700.0, value=50.0, step=1.0)
+mag = st.sidebar.number_input("Magnitudo", min_value=1.0, max_value=9.5, value=5.0, step=0.1)
+year = st.sidebar.number_input("Tahun", min_value=2000, max_value=2030, value=2023, step=1)
+month = st.sidebar.slider("Bulan", 1, 12, 6)
+hour = st.sidebar.slider("Jam", 0, 23, 12)
+
+# =============================
+
+# 4️⃣ Prediksi
+
+# =============================
+
+input_data = pd.DataFrame({
+"latitude": [latitude],
+"longitude": [longitude],
+"depth": [depth],
+"mag": [mag],
+"year": [year],
+"month": [month],
+"hour": [hour]
+})
+
+if st.button("🔍 Prediksi"):
+proba = model.predict_proba(input_data)[0][1]
+pred = model.predict(input_data)[0]
+kategori = "Gempa Kuat (≥6)" if pred == 1 else "Bukan Gempa Kuat (<6)"
+
+```
+st.subheader("Hasil Prediksi:")
+st.metric(label="Kategori", value=kategori)
+st.metric(label="Probabilitas Gempa Kuat", value=f"{proba*100:.2f}%")
+
+# Visualisasi lokasi gempa
+st.subheader("Peta Lokasi")
+layer = pdk.Layer(
+    "ScatterplotLayer",
+    data=input_data,
+    get_position='[longitude, latitude]',
+    get_color='[255, 0, 0]' if pred == 1 else '[0, 128, 255]',
+    get_radius=30000,
 )
-
-st.title("🌋 Prediksi Kategori Gempa Berdasarkan Kedalaman dan Magnitudo")
-st.markdown(
-    """
-    Aplikasi ini menggunakan model **Random Forest Classifier** untuk memprediksi **kategori tingkat kekuatan gempa bumi** 
-    berdasarkan **kedalaman (km)** dan **magnitudo (Skala Richter)**.  
-    Kamu bisa:
-    - 📤 Upload file CSV, atau  
-    - ✍️ Masukkan data secara manual.
-    """
-)
-st.divider()
+view_state = pdk.ViewState(latitude=latitude, longitude=longitude, zoom=5)
+st.pydeck_chart(pdk.Deck(layers=[layer], initial_view_state=view_state))
+```
 
 # =============================
-# LOAD MODEL
-# =============================
-@st.cache_resource
-def load_model():
-    try:
-        model = joblib.load(MODEL_FILE)
-        return model
-    except Exception as e:
-        st.error(f"Gagal memuat model: {e}")
-        return None
 
-model = load_model()
+# 5️⃣ Footer
 
 # =============================
-# MODE INPUT
-# =============================
-tab1, tab2 = st.tabs(["📂 Upload CSV", "🧮 Input Manual"])
 
-# =============================
-# MODE 1: UPLOAD CSV
-# =============================
-with tab1:
-    uploaded_file = st.file_uploader("Upload file CSV (harus berisi kolom 'depth' dan 'mag')", type=["csv"])
-
-    if uploaded_file is not None:
-        data = pd.read_csv(uploaded_file)
-        st.subheader("📄 Data yang Diunggah")
-        st.dataframe(data.head())
-
-        if model is not None:
-            try:
-                # Pastikan kolom sesuai dengan model
-                expected_features = ["depth", "mag"]
-                data = data.reindex(columns=expected_features, fill_value=0)
-
-                pred = model.predict(data)
-                data["Prediksi Kategori"] = pred
-
-                st.subheader("🔮 Hasil Prediksi")
-                st.dataframe(data.head())
-
-                st.subheader("📊 Ringkasan Prediksi")
-                counts = data["Prediksi Kategori"].value_counts()
-                st.bar_chart(counts)
-
-                fig, ax = plt.subplots(figsize=(5, 5))
-                ax.pie(counts, labels=counts.index, autopct='%1.1f%%', startangle=90)
-                ax.axis("equal")
-                st.pyplot(fig)
-
-                csv = data.to_csv(index=False).encode("utf-8")
-                st.download_button(
-                    "💾 Download Hasil Prediksi (CSV)",
-                    data=csv,
-                    file_name="hasil_prediksi_gempa.csv",
-                    mime="text/csv"
-                )
-
-            except Exception as e:
-                st.error(f"Terjadi kesalahan saat memproses data: {e}")
-    else:
-        st.info("Silakan upload file CSV terlebih dahulu untuk memulai prediksi.")
-
-# =============================
-# MODE 2: INPUT MANUAL
-# =============================
-with tab2:
-    st.subheader("🧮 Input Manual Gempa")
-
-    if model is not None:
-        depth = st.slider("Kedalaman Gempa (km)", 0, 700, 10, 1)
-        mag = st.slider("Magnitudo Gempa (Skala Richter)", 0.0, 10.0, 5.0, 0.1)
-        lat = st.slider("Lintang (Latitude)", -90.0, 90.0, 0.0, 0.1)
-        lon = st.slider("Bujur (Longitude)", -180.0, 180.0, 0.0, 0.1)
-
-        if st.button("Prediksi Sekarang 🔮"):
-            try:
-                input_df = pd.DataFrame([{"depth": depth, "mag": mag}])
-                prediction = model.predict(input_df)[0]
-
-                st.success(f"🌍 Kategori Gempa: {prediction}")
-                st.metric(label="Prediksi Akhir", value=prediction)
-
-                # Preview lokasi di peta
-                st.subheader("🗺️ Lokasi Gempa")
-                st.pydeck_chart(pdk.Deck(
-                    map_style="https://basemaps.cartocdn.com/gl/positron-gl-style/style.json",
-                    initial_view_state=pdk.ViewState(
-                        latitude=lat,
-                        longitude=lon,
-                        zoom=4,
-                        pitch=0,
-                    ),
-                    layers=[
-                        pdk.Layer(
-                            "ScatterplotLayer",
-                            data=pd.DataFrame([{"lat": lat, "lon": lon}]),
-                            get_position='[lon, lat]',
-                            get_color='[255, 0, 0]',
-                            get_radius=50000,
-                            pickable=True
-                        )
-                    ]
-                ))
-
-            except Exception as e:
-                st.error(f"Gagal melakukan prediksi: {e}")
+st.markdown("---")
+st.markdown("Dikembangkan oleh **M. Hibban Ramadhan** • Data: BMKG & USGS • Model: Random Forest/XGBoost (CRISP-DM Pipeline)")
