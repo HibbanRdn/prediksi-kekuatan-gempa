@@ -72,6 +72,7 @@ with tab1:
             try:
                 if hasattr(model, "feature_names_in_"):
                     expected_features = model.feature_names_in_
+                    # Sesuaikan kolom agar cocok dengan model
                     data = data.reindex(columns=expected_features, fill_value=0)
 
                 pred = model.predict(data)
@@ -109,9 +110,12 @@ with tab2:
     st.subheader("🧮 Input Manual Gempa")
 
     if model is not None:
-        cols = model.feature_names_in_  # ambil nama kolom dari model
+        if hasattr(model, "feature_names_in_"):
+            cols = list(model.feature_names_in_)
+        else:
+            cols = ["lat", "lon", "depth", "magnitudo"]
 
-        # Slider input manual
+        # Slider input utama
         lat = st.slider("Lintang (Latitude)", -90.0, 90.0, 0.0, 0.1)
         lon = st.slider("Bujur (Longitude)", -180.0, 180.0, 0.0, 0.1)
         depth = st.slider("Kedalaman Gempa (km)", 0, 700, 10, 1)
@@ -119,30 +123,34 @@ with tab2:
 
         if st.button("Prediksi Sekarang 🔮"):
             try:
-                # Buat dict semua kolom sesuai urutan pipeline
+                # Buat input dict sesuai dengan fitur model
                 input_dict = {}
                 for c in cols:
-                    if c == "lat":
+                    if c.lower() in ["lat", "latitude"]:
                         input_dict[c] = lat
-                    elif c == "lon":
+                    elif c.lower() in ["lon", "longitude"]:
                         input_dict[c] = lon
-                    elif c == "depth":
+                    elif c.lower() == "depth":
                         input_dict[c] = depth
-                    elif c == "magnitudo":
+                    elif c.lower() in ["mag", "magnitudo", "magnitude"]:
                         input_dict[c] = magnitudo
                     else:
-                        input_dict[c] = 2025  # default tahun atau fitur dummy lain
+                        # Jika model punya kolom lain (misalnya year, month, dll)
+                        input_dict[c] = 0  # nilai default
 
                 input_df = pd.DataFrame([input_dict])
+
+                # Pastikan kolom sesuai urutan model
+                input_df = input_df.reindex(columns=cols, fill_value=0)
 
                 prediction = model.predict(input_df)[0]
                 st.success(f"🌍 Kategori Gempa: {prediction}")
                 st.metric(label="Prediksi Akhir", value=prediction)
 
-                # Preview peta
+                # Preview lokasi gempa di peta
                 st.subheader("🗺️ Lokasi Gempa")
                 st.pydeck_chart(pdk.Deck(
-                    map_style="https://basemaps.cartocdn.com/gl/positron-gl-style/style.json",
+                    map_style="https://basemaps.cartocdn.com/gl/positron-gl-style.json",
                     initial_view_state=pdk.ViewState(
                         latitude=lat,
                         longitude=lon,
@@ -163,3 +171,6 @@ with tab2:
 
             except Exception as e:
                 st.error(f"Gagal melakukan prediksi: {e}")
+
+    else:
+        st.warning("Model belum tersedia. Pastikan file `bestmodel_gempa.pkl` ada di direktori yang sama.")
