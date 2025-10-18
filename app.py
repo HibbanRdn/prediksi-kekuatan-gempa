@@ -6,15 +6,34 @@ import joblib
 import matplotlib.pyplot as plt
 
 # =============================
-# DOWNLOAD MODEL DARI GOOGLE DRIVE
+# DOWNLOAD MODEL DARI GOOGLE DRIVE (HANDLE FILE BESAR)
 # =============================
+def download_file_from_google_drive(file_id, destination):
+    URL = "https://docs.google.com/uc?export=download"
+    session = requests.Session()
+
+    response = session.get(URL, params={'id': file_id}, stream=True)
+    token = None
+
+    for key, value in response.cookies.items():
+        if key.startswith('download_warning'):
+            token = value
+
+    if token:
+        params = {'id': file_id, 'confirm': token}
+        response = session.get(URL, params=params, stream=True)
+
+    with open(destination, "wb") as f:
+        for chunk in response.iter_content(chunk_size=32768):
+            if chunk:
+                f.write(chunk)
+
 MODEL_FILE = "bestmodel_gempa.pkl"
-MODEL_URL = "https://drive.google.com/uc?export=download&id=1OF8OtxUcD0fFdPp6Go0fqY5nxcYw8kIi"
+MODEL_ID = "1OF8OtxUcD0fFdPp6Go0fqY5nxcYw8kIi"
 
 if not os.path.exists(MODEL_FILE):
-    r = requests.get(MODEL_URL)
-    with open(MODEL_FILE, "wb") as f:
-        f.write(r.content)
+    with st.spinner("Mengunduh model dari Google Drive..."):
+        download_file_from_google_drive(MODEL_ID, MODEL_FILE)
 
 # =============================
 # CONFIG & HEADER
