@@ -1,39 +1,21 @@
 import os
-import requests
 import streamlit as st
 import pandas as pd
 import joblib
 import matplotlib.pyplot as plt
+import gdown
 
 # =============================
-# DOWNLOAD MODEL DARI GOOGLE DRIVE (HANDLE FILE BESAR)
+# DOWNLOAD MODEL DARI GOOGLE DRIVE MENGGUNAKAN GDOWN
 # =============================
-def download_file_from_google_drive(file_id, destination):
-    URL = "https://docs.google.com/uc?export=download"
-    session = requests.Session()
-
-    response = session.get(URL, params={'id': file_id}, stream=True)
-    token = None
-
-    for key, value in response.cookies.items():
-        if key.startswith('download_warning'):
-            token = value
-
-    if token:
-        params = {'id': file_id, 'confirm': token}
-        response = session.get(URL, params=params, stream=True)
-
-    with open(destination, "wb") as f:
-        for chunk in response.iter_content(chunk_size=32768):
-            if chunk:
-                f.write(chunk)
-
 MODEL_FILE = "bestmodel_gempa.pkl"
 MODEL_ID = "1OF8OtxUcD0fFdPp6Go0fqY5nxcYw8kIi"
+MODEL_URL = f"https://drive.google.com/uc?id={MODEL_ID}"
 
 if not os.path.exists(MODEL_FILE):
-    with st.spinner("Mengunduh model dari Google Drive..."):
-        download_file_from_google_drive(MODEL_ID, MODEL_FILE)
+    st.info("📥 Mengunduh model gempa dari Google Drive...")
+    gdown.download(MODEL_URL, MODEL_FILE, quiet=False)
+    st.success("✅ Model berhasil diunduh!")
 
 # =============================
 # CONFIG & HEADER
@@ -149,3 +131,4 @@ with tab2:
                 st.error(f"Gagal melakukan prediksi: {e}")
     else:
         st.warning("Model belum tersedia. Pastikan file `bestmodel_gempa.pkl` ada di direktori yang sama.")
+
