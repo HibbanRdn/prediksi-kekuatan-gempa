@@ -9,8 +9,8 @@ import pydeck as pdk  # Untuk visualisasi peta
 # =============================
 # DOWNLOAD MODEL DARI GOOGLE DRIVE
 # =============================
-MODEL_FILE = "bestmodel_gempa.pkl"
-MODEL_ID = "1OF8OtxUcD0fFdPp6Go0fqY5nxcYw8kIi"
+MODEL_FILE = "model_klasifikasi_gempa.pkl"
+MODEL_ID = "15ZNnOsumDX3iuOtu5eSdpKrksfd7bccu"  # ganti dengan ID model kamu di Google Drive
 MODEL_URL = f"https://drive.google.com/uc?id={MODEL_ID}"
 
 if not os.path.exists(MODEL_FILE):
@@ -27,13 +27,14 @@ st.set_page_config(
     layout="wide"
 )
 
-st.title("🌋 Prediksi Kategori Gempa Berdasarkan Data Input")
+st.title("🌋 Prediksi Kategori Gempa Berdasarkan Kedalaman dan Magnitudo")
 st.markdown(
     """
-    Aplikasi ini memprediksi **kelas gempa bumi** berdasarkan data numerik menggunakan model *Random Forest* terlatih.
+    Aplikasi ini menggunakan model **Random Forest Classifier** untuk memprediksi **kategori tingkat kekuatan gempa bumi** 
+    berdasarkan **kedalaman (km)** dan **magnitudo (Skala Richter)**.  
     Kamu bisa:
-    - 📤 Upload file CSV, atau
-    - ✍️ Masukkan data secara manual menggunakan slider dan lihat preview lokasi di peta.
+    - 📤 Upload file CSV, atau  
+    - ✍️ Masukkan data secara manual.
     """
 )
 st.divider()
@@ -61,7 +62,7 @@ tab1, tab2 = st.tabs(["📂 Upload CSV", "🧮 Input Manual"])
 # MODE 1: UPLOAD CSV
 # =============================
 with tab1:
-    uploaded_file = st.file_uploader("Upload file CSV", type=["csv"])
+    uploaded_file = st.file_uploader("Upload file CSV (harus berisi kolom 'depth' dan 'mag')", type=["csv"])
 
     if uploaded_file is not None:
         data = pd.read_csv(uploaded_file)
@@ -70,18 +71,18 @@ with tab1:
 
         if model is not None:
             try:
-                if hasattr(model, "feature_names_in_"):
-                    expected_features = model.feature_names_in_
-                    data = data.reindex(columns=expected_features, fill_value=0)
+                # Pastikan kolom sesuai dengan model
+                expected_features = ["depth", "mag"]
+                data = data.reindex(columns=expected_features, fill_value=0)
 
                 pred = model.predict(data)
-                data["Prediksi"] = pred
+                data["Prediksi Kategori"] = pred
 
                 st.subheader("🔮 Hasil Prediksi")
                 st.dataframe(data.head())
 
                 st.subheader("📊 Ringkasan Prediksi")
-                counts = data["Prediksi"].value_counts()
+                counts = data["Prediksi Kategori"].value_counts()
                 st.bar_chart(counts)
 
                 fig, ax = plt.subplots(figsize=(5, 5))
@@ -109,45 +110,20 @@ with tab2:
     st.subheader("🧮 Input Manual Gempa")
 
     if model is not None:
-        cols = model.feature_names_in_  # ambil semua fitur dari model
-
-        # Slider input manual untuk fitur yang dipakai model
+        depth = st.slider("Kedalaman Gempa (km)", 0, 700, 10, 1)
+        mag = st.slider("Magnitudo Gempa (Skala Richter)", 0.0, 10.0, 5.0, 0.1)
         lat = st.slider("Lintang (Latitude)", -90.0, 90.0, 0.0, 0.1)
         lon = st.slider("Bujur (Longitude)", -180.0, 180.0, 0.0, 0.1)
-        depth = st.slider("Kedalaman Gempa (km)", 0, 700, 10, 1)
-        year = st.number_input("Tahun Gempa", 1900, 2100, 2025)
-        month = st.slider("Bulan Gempa", 1, 12, 1)
-
-        # Slider magnitudo tetap untuk info pengguna, tapi **tidak masuk ke model**
-        magnitudo = st.slider("Magnitudo Gempa (Skala Richter)", 0.0, 10.0, 5.0, 0.1)
 
         if st.button("Prediksi Sekarang 🔮"):
             try:
-                # Buat input dict otomatis untuk semua fitur model
-                input_dict = {}
-                for c in cols:
-                    if c == "lat":
-                        input_dict[c] = lat
-                    elif c == "lon":
-                        input_dict[c] = lon
-                    elif c == "depth":
-                        input_dict[c] = depth
-                    elif c == "year":
-                        input_dict[c] = year
-                    elif c == "month":
-                        input_dict[c] = month
-                    else:
-                        input_dict[c] = 0  # fitur lain diisi default 0
-
-                input_df = pd.DataFrame([input_dict])
-
+                input_df = pd.DataFrame([{"depth": depth, "mag": mag}])
                 prediction = model.predict(input_df)[0]
+
                 st.success(f"🌍 Kategori Gempa: {prediction}")
                 st.metric(label="Prediksi Akhir", value=prediction)
 
-                st.info(f"Magnitudo yang dimasukkan: {magnitudo} SR")
-
-                # Preview peta
+                # Preview lokasi di peta
                 st.subheader("🗺️ Lokasi Gempa")
                 st.pydeck_chart(pdk.Deck(
                     map_style="https://basemaps.cartocdn.com/gl/positron-gl-style/style.json",
