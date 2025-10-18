@@ -115,7 +115,7 @@ with tab2:
         else:
             cols = ["magnitudo", "kedalaman", "lintang", "bujur"]
 
-        # Slider langsung tampil tanpa form
+        # ====== Slider Manual ======
         magnitudo = st.slider("Magnitudo Gempa (Skala Richter)", 0.0, 10.0, 5.0, 0.1,
                               help="Skala Richter, contoh: 5.6")
         kedalaman = st.slider("Kedalaman Gempa (km)", 0, 700, 10, 1,
@@ -124,6 +124,15 @@ with tab2:
                             help="Positif = Utara, Negatif = Selatan")
         bujur = st.slider("Koordinat Bujur (Longitude)", -180.0, 180.0, 0.0, 0.1,
                           help="Positif = Timur, Negatif = Barat")
+
+        # ====== Scaling Manual Input agar prediksi realistis ======
+        # Sesuaikan mean & std dengan data training model
+        feature_stats = {
+            "magnitudo": {"mean": 5.2, "std": 1.0},
+            "kedalaman": {"mean": 35, "std": 50},
+            "lintang": {"mean": -2.0, "std": 15.0},
+            "bujur": {"mean": 117.0, "std": 15.0}
+        }
 
         if st.button("Prediksi Sekarang 🔮"):
             try:
@@ -134,32 +143,39 @@ with tab2:
                     "bujur": bujur
                 }], columns=model.feature_names_in_)
 
+                # Scaling
+                for col in input_df.columns:
+                    if col in feature_stats:
+                        input_df[col] = (input_df[col] - feature_stats[col]["mean"]) / feature_stats[col]["std"]
+
                 prediction = model.predict(input_df)[0]
 
                 st.success(f"🌍 Kategori Gempa: {prediction}")
                 st.metric(label="Prediksi Akhir", value=prediction)
 
-                # Preview peta dengan OpenStreetMap gratis
+                # ====== PETA LOKASI ======
                 st.subheader("🗺️ Lokasi Gempa")
-                st.pydeck_chart(pdk.Deck(
-                    map_style="https://basemaps.cartocdn.com/gl/positron-gl-style/style.json",
-                    initial_view_state=pdk.ViewState(
-                        latitude=lintang,
-                        longitude=bujur,
-                        zoom=4,
-                        pitch=0,
-                    ),
-                    layers=[
-                        pdk.Layer(
-                            "ScatterplotLayer",
-                            data=pd.DataFrame([{"lintang": lintang, "bujur": bujur}]),
-                            get_position='[bujur, lintang]',
-                            get_color='[255, 0, 0]',
-                            get_radius=50000,
-                            pickable=True
-                        )
-                    ]
-                ))
+                st.pydeck_chart(
+                    pdk.Deck(
+                        map_style="https://basemaps.cartocdn.com/gl/positron-gl-style/style.json",
+                        initial_view_state=pdk.ViewState(
+                            latitude=lintang,
+                            longitude=bujur,
+                            zoom=4,
+                            pitch=0
+                        ),
+                        layers=[
+                            pdk.Layer(
+                                "ScatterplotLayer",
+                                data=pd.DataFrame([{"lintang": lintang, "bujur": bujur}]),
+                                get_position='[bujur, lintang]',
+                                get_color='[255, 0, 0]',
+                                get_radius=50000,
+                                pickable=True
+                            )
+                        ]
+                    )
+                )
 
             except Exception as e:
                 st.error(f"Gagal melakukan prediksi: {e}")
