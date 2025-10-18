@@ -103,7 +103,7 @@ with tab1:
         st.info("Silakan upload file CSV terlebih dahulu untuk memulai prediksi.")
 
 # =============================
-# MODE 2: INPUT MANUAL DENGAN SLIDER & MAP
+# MODE 2: INPUT MANUAL DENGAN SLIDER & PETA GRATIS
 # =============================
 with tab2:
     st.subheader("🧮 Input Manual Gempa")
@@ -139,10 +139,10 @@ with tab2:
                 st.success(f"🌍 Kategori Gempa: {prediction}")
                 st.metric(label="Prediksi Akhir", value=prediction)
 
-                # Preview peta
+                # Preview peta dengan OpenStreetMap gratis
                 st.subheader("🗺️ Lokasi Gempa")
                 st.pydeck_chart(pdk.Deck(
-                    map_style="mapbox://styles/mapbox/light-v10",
+                    map_style="https://basemaps.cartocdn.com/gl/positron-gl-style/style.json",
                     initial_view_state=pdk.ViewState(
                         latitude=lintang,
                         longitude=bujur,
