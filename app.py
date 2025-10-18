@@ -109,11 +109,7 @@ with tab2:
     st.subheader("🧮 Input Manual Gempa")
 
     if model is not None:
-        # Ambil nama fitur dari model
-        if hasattr(model, "feature_names_in_"):
-            cols = model.feature_names_in_
-        else:
-            cols = ["lat", "lon", "depth", "magnitudo"]  # sesuai pipeline
+        cols = model.feature_names_in_  # ambil nama kolom dari model
 
         # Slider input manual
         lat = st.slider("Lintang (Latitude)", -90.0, 90.0, 0.0, 0.1)
@@ -123,14 +119,27 @@ with tab2:
 
         if st.button("Prediksi Sekarang 🔮"):
             try:
-                # Buat DataFrame input sesuai urutan FEATURES pipeline
-                input_df = pd.DataFrame([[lat, lon, depth, magnitudo]], columns=cols)
-                prediction = model.predict(input_df)[0]
+                # Buat dict semua kolom sesuai urutan pipeline
+                input_dict = {}
+                for c in cols:
+                    if c == "lat":
+                        input_dict[c] = lat
+                    elif c == "lon":
+                        input_dict[c] = lon
+                    elif c == "depth":
+                        input_dict[c] = depth
+                    elif c == "magnitudo":
+                        input_dict[c] = magnitudo
+                    else:
+                        input_dict[c] = 2025  # default tahun atau fitur dummy lain
 
+                input_df = pd.DataFrame([input_dict])
+
+                prediction = model.predict(input_df)[0]
                 st.success(f"🌍 Kategori Gempa: {prediction}")
                 st.metric(label="Prediksi Akhir", value=prediction)
 
-                # Preview peta dengan OpenStreetMap gratis
+                # Preview peta
                 st.subheader("🗺️ Lokasi Gempa")
                 st.pydeck_chart(pdk.Deck(
                     map_style="https://basemaps.cartocdn.com/gl/positron-gl-style/style.json",
@@ -154,5 +163,3 @@ with tab2:
 
             except Exception as e:
                 st.error(f"Gagal melakukan prediksi: {e}")
-    else:
-        st.warning("Model belum tersedia. Pastikan file pipeline ada.")
