@@ -59,17 +59,32 @@ with col3:
 with col4:
     lon = st.number_input("Longitude (Bujur)", min_value=95.0, max_value=142.0, value=118.0, step=0.1)
 
-# --- PREDIKSI ---
+# --- PREDIKSI (robust handling untuk output model yang bisa berupa int atau str) ---
 if st.button("🔍 Prediksi"):
     input_data = np.array([[depth, mag]])
     try:
-        pred = model.predict(input_data)
-        kategori = le.inverse_transform(pred)[0]
+        pred = model.predict(input_data)  # bisa berupa array of ints atau array of strs
+        
+        # --- Coba deteksi tipe output ---
+        kategori = None
+        try:
+            if pred.dtype.kind in ("i", "u", "f"):
+                # Prediksi berupa angka (encoded)
+                kategori = le.inverse_transform(pred.astype(int))[0]
+            else:
+                first = pred[0]
+                if hasattr(le, "classes_") and first in le.classes_:
+                    kategori = first
+                else:
+                    kategori = first
+        except Exception:
+            kategori = pred[0]
+
+        # --- Tampilkan hasil ---
         st.subheader("🌏 Hasil Prediksi:")
         st.success(f"Kategori Gempa: **{kategori}**")
-
         st.caption("Estimasi berdasarkan model pembelajaran mesin CRISP-DM dengan data gempa Indonesia 2008–2023.")
-
+        
         # --- VISUALISASI PETA ---
         st.markdown("### 🗺️ Visualisasi Lokasi Gempa (Jika Diberikan)")
         df_map = pd.DataFrame({"latitude": [lat], "longitude": [lon], "kategori": [kategori], "mag": [mag]})
@@ -94,11 +109,35 @@ if st.button("🔍 Prediksi"):
 
         view_state = pdk.ViewState(latitude=lat, longitude=lon, zoom=5)
         tooltip = {"text": "Kategori: {kategori}\nMagnitudo: {mag}"}
-
         st.pydeck_chart(pdk.Deck(layers=[layer], initial_view_state=view_state, tooltip=tooltip))
+
+        # --- Legenda warna ---
+        st.markdown("#### 🟢 Legenda Kategori Gempa")
+        legend_html = """
+        <div style='display: flex; flex-wrap: wrap; gap: 8px;'>
+            <div style='background-color: rgb(173,216,230); padding:4px 8px; border-radius:6px;'>Gempa Mikro</div>
+            <div style='background-color: rgb(100,181,246); padding:4px 8px; border-radius:6px;'>Gempa Minor</div>
+            <div style='background-color: rgb(72,201,176); padding:4px 8px; border-radius:6px;'>Gempa Ringan</div>
+            <div style='background-color: rgb(255,204,128); padding:4px 8px; border-radius:6px;'>Gempa Sedang</div>
+            <div style='background-color: rgb(255,167,38); padding:4px 8px; border-radius:6px;'>Gempa Kuat</div>
+            <div style='background-color: rgb(244,67,54); padding:4px 8px; border-radius:6px;'>Gempa Dahsyat</div>
+        </div>
+        """
+        st.markdown(legend_html, unsafe_allow_html=True)
 
     except Exception as e:
         st.error(f"Terjadi kesalahan saat prediksi: {e}")
+
+if st.checkbox("Tampilkan Feature Importance"):
+    try:
+        importances = model.feature_importances_
+        feats = pd.DataFrame({
+            "Fitur": ["Depth", "Magnitude"],
+            "Pentingnya": importances
+        })
+        st.bar_chart(feats.set_index("Fitur"))
+    except:
+        st.warning("Model ini tidak memiliki atribut feature_importances_.")
 
 # --- INFO TAMBAHAN ---
 with st.expander("ℹ️ Tentang Model"):
@@ -111,16 +150,5 @@ with st.expander("ℹ️ Tentang Model"):
     5. **Evaluation** — Akurasi lebih dari 90% pada data uji.
     6. **Deployment** — Aplikasi Streamlit Cloud ini.
     """)
-
-if st.checkbox("Tampilkan Feature Importance"):
-    try:
-        importances = model.feature_importances_
-        feats = pd.DataFrame({
-            "Fitur": ["Depth", "Magnitude"],
-            "Pentingnya": importances
-        })
-        st.bar_chart(feats.set_index("Fitur"))
-    except:
-        st.warning("Model ini tidak memiliki atribut feature_importances_.")
 
 st.caption("Dibuat oleh: [Nama Kamu] — Proyek Prediksi Kategori Gempa Indonesia (CRISP-DM)")
