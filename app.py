@@ -283,35 +283,35 @@ with tab3:
     ax.set_ylabel("Rata-rata Magnitudo")
     ax.set_title("Tren Gempa Indonesia 2008–2023", pad=10)
     st.pyplot(fig, use_container_width=False)
+    
+# --- Heatmap Persebaran Lokasi Gempa (open source base map) ---
+st.markdown("#### 🗺️ Heatmap Persebaran Gempa di Indonesia")
+data_heatmap = pd.DataFrame({
+    "lat": np.random.uniform(-10, 6, 300),
+    "lon": np.random.uniform(95, 140, 300),
+})
 
-    # --- Heatmap Persebaran Lokasi Gempa (dummy) ---
-    st.markdown("#### 🗺️ Heatmap Persebaran Gempa di Indonesia")
-    data_heatmap = pd.DataFrame({
-        "lat": np.random.uniform(-10, 6, 300),
-        "lon": np.random.uniform(95, 140, 300),
-    })
-
-    st.pydeck_chart(
-        pdk.Deck(
-            map_style="mapbox://styles/mapbox/light-v11",
-            initial_view_state=pdk.ViewState(
-                latitude=-2.5,
-                longitude=120,
-                zoom=4,
-                pitch=30,
+# === Versi tanpa Mapbox, gunakan OSM / Carto ===
+st.pydeck_chart(
+    pdk.Deck(
+        map_style="https://basemaps.cartocdn.com/gl/positron-gl-style/style.json",
+        initial_view_state=pdk.ViewState(
+            latitude=-2.5,
+            longitude=120,
+            zoom=4,
+            pitch=30,
+        ),
+        layers=[
+            pdk.Layer(
+                "HeatmapLayer",
+                data=data_heatmap,
+                get_position=["lon", "lat"],
+                opacity=0.6,
             ),
-            layers=[
-                pdk.Layer(
-                    "HeatmapLayer",
-                    data=data_heatmap,
-                    get_position=["lon", "lat"],
-                    opacity=0.6,
-                ),
-            ],
-        )
+        ],
     )
+)
 
-    st.caption("Visualisasi ini menggunakan data simulasi 2008–2023 untuk menggambarkan tren dan persebaran gempa di Indonesia.")
 
 
 # ==========================================================
