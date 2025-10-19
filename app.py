@@ -8,14 +8,18 @@ import pydeck as pdk
 import datetime
 import matplotlib.pyplot as plt
 
-# --- Konfigurasi Halaman ---
+# ==========================================================
+# === KONFIGURASI HALAMAN =================================
+# ==========================================================
 st.set_page_config(
     page_title="Prediksi Kategori Gempa Indonesia",
     page_icon="🌋",
     layout="wide"
 )
 
-# --- Judul Aplikasi ---
+# ==========================================================
+# === JUDUL APLIKASI =======================================
+# ==========================================================
 st.markdown(
     "<h1 style='text-align:left; margin-bottom:0;'>🌋 Prediksi Kategori Gempa di Indonesia</h1>",
     unsafe_allow_html=True
@@ -25,14 +29,15 @@ Aplikasi ini memprediksi kategori gempa berdasarkan **kedalaman (km)** dan **mag
 Model dilatih menggunakan algoritma *Random Forest/XGBoost* dengan data gempa Indonesia tahun **2008–2023** (BMKG & USGS).
 """)
 
-# --- URL Google Drive untuk Model & Encoder ---
+# ==========================================================
+# === MODEL DAN ENCODER ====================================
+# ==========================================================
 MODEL_URL = "https://drive.google.com/uc?id=1tkqKxH3YQ9wNxMXpbchCF9wcZase-d_Z"
 ENCODER_URL = "https://drive.google.com/uc?id=1pIYTRtB-i2LWXkJu-pqubornaGebSqP4"
 
 MODEL_PATH = "best_model_kategori_gempa.pkl"
 ENCODER_PATH = "label_encoder_kategori_gempa.pkl"
 
-# --- Fungsi untuk download dan load model ---
 @st.cache_resource
 def load_model():
     if not os.path.exists(MODEL_PATH):
@@ -144,7 +149,6 @@ with tab2:
                 df = pd.read_csv(uploaded_file, sep="\t")
 
             df.columns = [c.strip().lower().replace(" ", "_") for c in df.columns]
-
             st.write("### 🧾 Data Awal")
             st.dataframe(df.head())
 
@@ -222,7 +226,6 @@ with tab2:
 # ==========================================================
 with tab3:
     st.header("📘 Tentang Aplikasi")
-
     st.markdown("""
     Aplikasi **Prediksi Kategori Gempa Indonesia** ini dikembangkan untuk mempermudah analisis tingkat kekuatan gempa bumi
     berdasarkan parameter **magnitudo** dan **kedalaman (depth)** menggunakan pendekatan *Machine Learning*.
@@ -258,73 +261,65 @@ with tab3:
     - **Nama:** M. Hibban Ramadhan  
     - **Institusi:** Universitas Lampung  
     - **Teknologi:** Python, Streamlit, Scikit-Learn, XGBoost, PyDeck  
-
     ---
     """)
-    # --- Visualisasi Data Historis Gempa 2008–2023 ---
-st.subheader("🌋 Visualisasi Data Historis Gempa 2008–2023")
 
-url = "https://raw.githubusercontent.com/HibbanRdn/prediksi-kekuatan-gempa/refs/heads/main/data/katalog_gempa.csv"
+    # ==========================================================
+    # === VISUALISASI DATA HISTORIS GEMPA =======================
+    # ==========================================================
+    st.subheader("🌋 Visualisasi Data Historis Gempa 2008–2023")
 
-try:
-    df_hist = pd.read_csv(url)
-    # Normalisasi nama kolom jika perlu
-    df_hist.columns = [c.strip().lower().replace(" ", "_") for c in df_hist.columns]
+    url = "https://raw.githubusercontent.com/HibbanRdn/prediksi-kekuatan-gempa/refs/heads/main/data/katalog_gempa.csv"
+    try:
+        df_hist = pd.read_csv(url)
+        df_hist.columns = [c.strip().lower().replace(" ", "_") for c in df_hist.columns]
+        df_hist = df_hist.dropna(subset=["lat", "lon", "mag"])
 
-    # Pastikan kolom lat, lon, mag tersedia
-    df_hist = df_hist.dropna(subset=["lat", "lon", "mag"])
+        if "tgl" in df_hist.columns:
+            df_hist["year"] = pd.to_datetime(df_hist["tgl"], errors="coerce").dt.year
+        elif "tanggal" in df_hist.columns:
+            df_hist["year"] = pd.to_datetime(df_hist["tanggal"], errors="coerce").dt.year
+        else:
+            df_hist["year"] = df_hist.index
 
-    # Ekstrak tahun dari tanggal jika ada kolom waktu
-    if "tgl" in df_hist.columns:
-        df_hist["year"] = pd.to_datetime(df_hist["tgl"], errors="coerce").dt.year
-    elif "tanggal" in df_hist.columns:
-        df_hist["year"] = pd.to_datetime(df_hist["tanggal"], errors="coerce").dt.year
-    else:
-        df_hist["year"] = df_hist.index  # fallback
+        tren = df_hist.groupby("year")["mag"].mean().reset_index().dropna()
 
-    # --- Tren rata-rata magnitudo per tahun ---
-    tren = df_hist.groupby("year")["mag"].mean().reset_index().dropna()
+        st.markdown("#### 📈 Tren Rata-rata Magnitudo per Tahun")
+        fig1, ax1 = plt.subplots(figsize=(7, 3))
+        ax1.plot(tren["year"], tren["mag"], marker="o", color="#4B9CD3", linewidth=2)
+        ax1.set_xlabel("Tahun")
+        ax1.set_ylabel("Rata-rata Magnitudo")
+        ax1.set_title("Tren Gempa Indonesia 2008–2023", pad=10)
+        st.pyplot(fig1, use_container_width=False)
 
-    st.markdown("#### 📈 Tren Rata-rata Magnitudo per Tahun")
-    fig1, ax1 = plt.subplots(figsize=(7, 3))
-    ax1.plot(tren["year"], tren["mag"], marker="o", color="#4B9CD3", linewidth=2)
-    ax1.set_xlabel("Tahun")
-    ax1.set_ylabel("Rata-rata Magnitudo")
-    ax1.set_title("Tren Gempa Indonesia 2008-2023", pad=10)
-    st.pyplot(fig1, use_container_width=False)
-
-    # --- Heatmap berbasis magnitudo ---
-    st.markdown("#### 🗺️ Heatmap Persebaran Gempa Berdasarkan Magnitudo")
-    st.pydeck_chart(
-        pdk.Deck(
-            map_style="https://basemaps.cartocdn.com/gl/positron-gl-style/style.json",
-            initial_view_state=pdk.ViewState(
-                latitude=df_hist["lat"].mean(),
-                longitude=df_hist["lon"].mean(),
-                zoom=4,
-                pitch=30,
-            ),
-            layers=[
-                pdk.Layer(
-                    "HeatmapLayer",
-                    data=df_hist,
-                    get_position=["lon", "lat"],
-                    get_weight="mag",
-                    radiusPixels=50,
-                    intensity=1,
-                    threshold=0.05,
-                    opacity=0.6,
+        st.markdown("#### 🗺️ Heatmap Persebaran Gempa Berdasarkan Magnitudo")
+        st.pydeck_chart(
+            pdk.Deck(
+                map_style="https://basemaps.cartocdn.com/gl/positron-gl-style/style.json",
+                initial_view_state=pdk.ViewState(
+                    latitude=df_hist["lat"].mean(),
+                    longitude=df_hist["lon"].mean(),
+                    zoom=4,
+                    pitch=30,
                 ),
-            ],
+                layers=[
+                    pdk.Layer(
+                        "HeatmapLayer",
+                        data=df_hist,
+                        get_position=["lon", "lat"],
+                        get_weight="mag",
+                        radiusPixels=50,
+                        intensity=1,
+                        threshold=0.05,
+                        opacity=0.6,
+                    ),
+                ],
+            )
         )
-    )
-    st.caption("Visualisasi ini menggunakan data historis 2008–2023 dari GitHub, berdasarkan magnitudo gempa di Indonesia.")
+        st.caption("Visualisasi ini menggunakan data historis 2008–2023 dari GitHub, berdasarkan magnitudo gempa di Indonesia.")
 
-except Exception as e:
-    st.warning(f"❌ Tidak dapat memuat data historis: {e}")
-
-
-
+    except Exception as e:
+        st.warning(f"❌ Tidak dapat memuat data historis: {e}")
 
 # ==========================================================
 # === FOOTER ===============================================
@@ -333,9 +328,9 @@ st.markdown("<br><hr><br>", unsafe_allow_html=True)
 year = datetime.datetime.now().year
 st.markdown(
     f"""
-    <div style='text-align: center; color: gray; font-size: 0.9rem; margin-top: 10px;'>
+    <div style='text-align:center; color:gray; font-size:0.9rem; margin-top:10px;'>
         © {year} <b>M. Hibban Ramadhan</b> — Proyek <i>Prediksi Kategori Gempa Indonesia</i><br>
-        Dibangun menggunakan <a href='https://streamlit.io' target='_blank' style='color: #4b9cd3; text-decoration: none;'>Streamlit</a>
+        Dibangun menggunakan <a href='https://streamlit.io' target='_blank' style='color:#4b9cd3; text-decoration:none;'>Streamlit</a>
     </div>
     """,
     unsafe_allow_html=True
