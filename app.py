@@ -20,8 +20,8 @@ st.markdown(
     unsafe_allow_html=True
 )
 st.write("""
-Apps ini memprediksi kategori gempa berdasarkan **kedalaman (km)** dan **magnitudo (Skala Richter)** menggunakan model Random Forest/XGBoost yang dilatih dengan data historis BMKG & USGS.  
-Model dilatih menggunakan algoritma *Random Forest/XGBoost* dengan data gempa Indonesia tahun **2008–2023**.
+Apps ini memprediksi kategori gempa berdasarkan **kedalaman (km)** dan **magnitudo (Skala Richter)**. (**Indeks Gempa (IG = mag*(100-depth)/100)**) 
+Model dilatih menggunakan algoritma *Random Forest/XGBoost* dengan data gempa Indonesia tahun **2008–2023**. (Data historis BMKG & USGS)
 """)
 
 # --- URL Google Drive untuk Model & Encoder ---
