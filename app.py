@@ -261,56 +261,68 @@ with tab3:
 
     ---
     """)
-        # ==========================================================
-    # === VISUALISASI DATA HISTORIS GEMPA 2008–2023 ============
-    # ==========================================================
-    st.subheader("🌋 Visualisasi Data Historis Gempa 2008–2023")
+    # --- Visualisasi Data Historis Gempa 2008–2023 ---
+st.subheader("🌋 Visualisasi Data Historis Gempa 2008–2023")
 
-    # --- Contoh visualisasi tren magnitudo per tahun (dummy) ---
-    np.random.seed(42)
-    tahun = np.arange(2008, 2024)
-    magnitudo_rata = np.random.uniform(4.0, 6.5, len(tahun))
+url = "https://raw.githubusercontent.com/HibbanRdn/prediksi-kekuatan-gempa/refs/heads/main/data/katalog_gempa.csv"
 
-    df_tren = pd.DataFrame({
-        "Tahun": tahun,
-        "Rata-rata Magnitudo": magnitudo_rata
-    })
+try:
+    df_hist = pd.read_csv(url)
+    # Normalisasi nama kolom jika perlu
+    df_hist.columns = [c.strip().lower().replace(" ", "_") for c in df_hist.columns]
+
+    # Pastikan kolom lat, lon, mag tersedia
+    df_hist = df_hist.dropna(subset=["lat", "lon", "mag"])
+
+    # Ekstrak tahun dari tanggal jika ada kolom waktu
+    if "tgl" in df_hist.columns:
+        df_hist["year"] = pd.to_datetime(df_hist["tgl"], errors="coerce").dt.year
+    elif "tanggal" in df_hist.columns:
+        df_hist["year"] = pd.to_datetime(df_hist["tanggal"], errors="coerce").dt.year
+    else:
+        df_hist["year"] = df_hist.index  # fallback
+
+    # --- Tren rata-rata magnitudo per tahun ---
+    tren = df_hist.groupby("year")["mag"].mean().reset_index().dropna()
 
     st.markdown("#### 📈 Tren Rata-rata Magnitudo per Tahun")
-    fig, ax = plt.subplots(figsize=(7, 3))
-    ax.plot(df_tren["Tahun"], df_tren["Rata-rata Magnitudo"], marker="o", color="#4B9CD3", linewidth=2)
-    ax.set_xlabel("Tahun")
-    ax.set_ylabel("Rata-rata Magnitudo")
-    ax.set_title("Tren Gempa Indonesia 2008–2023", pad=10)
-    st.pyplot(fig, use_container_width=False)
-    
-# --- Heatmap Persebaran Lokasi Gempa (open source base map) ---
-st.markdown("#### 🗺️ Heatmap Persebaran Gempa di Indonesia")
-data_heatmap = pd.DataFrame({
-    "lat": np.random.uniform(-10, 6, 300),
-    "lon": np.random.uniform(95, 140, 300),
-})
+    fig1, ax1 = plt.subplots(figsize=(7, 3))
+    ax1.plot(tren["year"], tren["mag"], marker="o", color="#4B9CD3", linewidth=2)
+    ax1.set_xlabel("Tahun")
+    ax1.set_ylabel("Rata-rata Magnitudo")
+    ax1.set_title("Tren Gempa Indonesia 2008-2023", pad=10)
+    st.pyplot(fig1, use_container_width=False)
 
-# === Versi tanpa Mapbox, gunakan OSM / Carto ===
-st.pydeck_chart(
-    pdk.Deck(
-        map_style="https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json",
-        initial_view_state=pdk.ViewState(
-            latitude=-2.5,
-            longitude=120,
-            zoom=4,
-            pitch=30,
-        ),
-        layers=[
-            pdk.Layer(
-                "HeatmapLayer",
-                data=data_heatmap,
-                get_position=["lon", "lat"],
-                opacity=0.6,
+    # --- Heatmap berbasis magnitudo ---
+    st.markdown("#### 🗺️ Heatmap Persebaran Gempa Berdasarkan Magnitudo")
+    st.pydeck_chart(
+        pdk.Deck(
+            map_style="https://basemaps.cartocdn.com/gl/positron-gl-style/style.json",
+            initial_view_state=pdk.ViewState(
+                latitude=df_hist["lat"].mean(),
+                longitude=df_hist["lon"].mean(),
+                zoom=4,
+                pitch=30,
             ),
-        ],
+            layers=[
+                pdk.Layer(
+                    "HeatmapLayer",
+                    data=df_hist,
+                    get_position=["lon", "lat"],
+                    get_weight="mag",
+                    radiusPixels=50,
+                    intensity=1,
+                    threshold=0.05,
+                    opacity=0.6,
+                ),
+            ],
+        )
     )
-)
+    st.caption("Visualisasi ini menggunakan data historis 2008–2023 dari GitHub, berdasarkan magnitudo gempa di Indonesia.")
+
+except Exception as e:
+    st.warning(f"❌ Tidak dapat memuat data historis: {e}")
+
 
 
 
