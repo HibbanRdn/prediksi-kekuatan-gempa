@@ -1,4 +1,4 @@
-# app.py — Mobile-friendly Streamlit Prediksi Gempa (Manual & CSV)
+# app.py — Mobile-friendly Streamlit Prediksi Gempa (Auto-download & Auto-fill defaults CSV)
 
 import os
 import streamlit as st
@@ -6,27 +6,41 @@ import pandas as pd
 import joblib
 import pydeck as pdk
 import matplotlib.pyplot as plt
+import gdown
 
 st.set_page_config(page_title="Prediksi Kategori Gempa", layout="wide")
 st.title("🌋 Prediksi Kategori Gempa Indonesia")
 st.markdown("""
 Aplikasi memprediksi kategori gempa berdasarkan **magnitudo & kedalaman**.  
 Bisa input **manual** atau **upload CSV** dengan kolom berbeda-beda.  
-Jika kolom hilang, digunakan nilai default.
+Jika ada kolom hilang, digunakan nilai default.
 """)
 
 # =============================
-# Load Model & LabelEncoder
+# Load / Download Model & LabelEncoder
 # =============================
 MODEL_FILE = "best_model_kategori_gempa.pkl"
-LABEL_FILE = "label_encoder_kategori_gempa.pkl"
+ENCODER_FILE = "label_encoder_kategori_gempa.pkl"
 
-if not os.path.exists(MODEL_FILE) or not os.path.exists(LABEL_FILE):
-    st.error("❌ Model atau LabelEncoder tidak ditemukan.")
+# Ganti dengan file ID dari Google Drive Anda
+MODEL_ID = "1tkqKxH3YQ9wNxMXpbchCF9wcZase-d_Z"      # contoh: "1kY3dqUueLood8WNPU5vK39GZI49D0FpH"
+ENCODER_ID = "1pIYTRtB-i2LWXkJu-pqubornaGebSqP4"  # contoh: "1a2b3c4d5e6f7g8h9i0j"
+
+# Unduh jika belum ada
+if not os.path.exists(MODEL_FILE):
+    st.info("📥 Menyiapkan Model...")
+    gdown.download(f"https://drive.google.com/uc?id={MODEL_ID}", MODEL_FILE, quiet=False)
+if not os.path.exists(ENCODER_FILE):
+    st.info("📥 Menyiapkan LabelEncoder...")
+    gdown.download(f"https://drive.google.com/uc?id={ENCODER_ID}", ENCODER_FILE, quiet=False)
+
+# Load model & encoder
+try:
+    model = joblib.load(MODEL_FILE)
+    le = joblib.load(ENCODER_FILE)
+except Exception as e:
+    st.error(f"❌ Gagal memuat model atau encoder: {e}")
     st.stop()
-
-model = joblib.load(MODEL_FILE)
-le = joblib.load(LABEL_FILE)
 
 # =============================
 # Input Data
@@ -35,7 +49,12 @@ mode = st.radio("Pilih cara input:", ["Manual", "Upload CSV"])
 input_data = None
 
 # Default values
-DEFAULTS = {"depth":50.0, "mag":5.0, "latitude":-2.5, "longitude":118.0}
+DEFAULTS = {
+    "depth": 50.0,
+    "mag": 5.0,
+    "latitude": -2.5,
+    "longitude": 118.0
+}
 
 # Manual input
 if mode == "Manual":
@@ -44,10 +63,10 @@ if mode == "Manual":
     latitude = st.number_input("Latitude", -11.0, 6.0, DEFAULTS["latitude"])
     longitude = st.number_input("Longitude", 94.0, 142.0, DEFAULTS["longitude"])
     input_data = pd.DataFrame({
-        "depth":[depth],
-        "mag":[mag],
-        "latitude":[latitude],
-        "longitude":[longitude]
+        "depth": [depth],
+        "mag": [mag],
+        "latitude": [latitude],
+        "longitude": [longitude]
     })
 
 # CSV upload
@@ -60,9 +79,9 @@ elif mode == "Upload CSV":
         col_map = {}
         for c in df_csv.columns:
             c_low = c.lower()
-            if c_low in ['lat','latitude']:
+            if c_low in ['lat', 'latitude']:
                 col_map[c] = 'latitude'
-            elif c_low in ['lon','longitude','long']:
+            elif c_low in ['lon', 'longitude', 'long']:
                 col_map[c] = 'longitude'
             elif c_low in ['depth','depth_km','kedalaman']:
                 col_map[c] = 'depth'
@@ -71,10 +90,10 @@ elif mode == "Upload CSV":
 
         df_csv.rename(columns=col_map, inplace=True)
 
-        # Pastikan semua kolom penting ada
+        # Pastikan kolom penting ada, isi default jika tidak ada
         for key, val in DEFAULTS.items():
             if key not in df_csv.columns:
-                st.warning(f"Kolom '{key}' tidak ada, digunakan default: {val}")
+                st.warning(f"Kolom '{key}' tidak ada, digunakan nilai default: {val}")
                 df_csv[key] = val
 
         input_data = df_csv[list(DEFAULTS.keys())].copy()
@@ -93,7 +112,7 @@ if input_data is not None and st.button("🔍 Prediksi"):
         st.subheader("📊 Hasil Prediksi")
         st.dataframe(input_data)
 
-        # Probabilitas prediksi
+        # Probabilitas per baris (jika tersedia)
         if hasattr(model, "predict_proba"):
             st.subheader("📈 Probabilitas Prediksi")
             prob = model.predict_proba(input_data)
@@ -107,7 +126,7 @@ if input_data is not None and st.button("🔍 Prediksi"):
                     ax.text(j, v+0.02, f"{v*100:.1f}%", ha="center")
                 st.pyplot(fig)
 
-        # Peta lokasi
+        # Peta
         st.subheader("🗺️ Peta Lokasi")
         layer = pdk.Layer(
             "ScatterplotLayer",
