@@ -25,7 +25,7 @@ st.markdown(
     unsafe_allow_html=True
 )
 st.write("""
-Aplikasi ini memprediksi kategori gempa berdasarkan **kedalaman (km)** dan **magnitudo (Skala Richter)**.  
+App ini memprediksi kategori gempa berdasarkan **kedalaman (km)** dan **magnitudo (Skala Richter)**.  
 Model dilatih menggunakan algoritma *Random Forest/XGBoost* dengan data gempa Indonesia tahun **2008–2023** (BMKG & USGS).
 """)
 
@@ -237,10 +237,8 @@ with tab3:
     # =============================
     # DESKRIPSI APLIKASI GEMPA
     # =============================
-    st.title("🌋 Prediksi Kategori Gempa Indonesia")
-
     st.write("""
-    Aplikasi ini dikembangkan untuk mempermudah analisis tingkat kekuatan gempa bumi
+    App ini dikembangkan untuk mempermudah analisis tingkat kekuatan gempa bumi
     berdasarkan parameter **magnitudo** dan **kedalaman (depth)** menggunakan pendekatan *Machine Learning*.
     """)
 
