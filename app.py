@@ -300,7 +300,7 @@ with tab3:
         st.markdown("#### 🗺️ Heatmap Persebaran Gempa Berdasarkan Magnitudo")
         st.pydeck_chart(
             pdk.Deck(
-                map_style="https://basemaps.cartocdn.com/gl/positron-gl-style/style.json",
+                map_style="https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json",
                 initial_view_state=pdk.ViewState(
                     latitude=df_hist["lat"].mean(),
                     longitude=df_hist["lon"].mean(),
