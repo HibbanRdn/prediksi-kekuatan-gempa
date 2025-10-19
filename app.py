@@ -21,8 +21,8 @@ st.markdown(
     unsafe_allow_html=True
 )
 st.write("""
-Apps ini memprediksi kategori gempa berdasarkan **kedalaman (km)** dan **magnitudo (Skala Richter)**.  
-Model dilatih menggunakan algoritma *Random Forest/XGBoost* dengan data gempa Indonesia tahun **2008–2023**. (**Data historis BMKG & USGS**)
+Aplikasi ini memprediksi kategori gempa berdasarkan **kedalaman (km)** dan **magnitudo (Skala Richter)**.  
+Model dilatih menggunakan algoritma *Random Forest/XGBoost* dengan data gempa Indonesia tahun **2008–2023** (BMKG & USGS).
 """)
 
 # --- URL Google Drive untuk Model & Encoder ---
@@ -55,18 +55,14 @@ except Exception as e:
 st.markdown("<br>", unsafe_allow_html=True)
 
 # ==========================================================
-# === PILIH MODE INPUT =====================================
+# === TAB NAVIGASI =========================================
 # ==========================================================
-st.sidebar.title("🧭 Mode Input")
-mode = st.sidebar.radio(
-    "Pilih metode input data:",
-    ("Input Langsung", "Upload File CSV")
-)
+tab1, tab2, tab3 = st.tabs(["🧾 Input Langsung", "📂 Upload CSV", "📘 Tentang Aplikasi"])
 
 # ==========================================================
-# === MODE 1: INPUT LANGSUNG ===============================
+# === TAB 1: INPUT LANGSUNG ================================
 # ==========================================================
-if mode == "Input Langsung":
+with tab1:
     st.header("🧾 Masukkan Parameter Gempa")
 
     col1, col2 = st.columns(2)
@@ -82,7 +78,7 @@ if mode == "Input Langsung":
     with col4:
         lon = st.number_input("Longitude (Bujur)", min_value=95.0, max_value=142.0, value=118.0, step=0.1)
 
-    if st.button("🔍 Prediksi"):
+    if st.button("🔍 Prediksi", use_container_width=True):
         input_data = np.array([[depth, mag]])
         try:
             pred = model.predict(input_data)
@@ -131,9 +127,9 @@ if mode == "Input Langsung":
             st.error(f"Terjadi kesalahan saat prediksi: {e}")
 
 # ==========================================================
-# === MODE 2: UPLOAD FILE CSV ==============================
+# === TAB 2: UPLOAD FILE CSV ===============================
 # ==========================================================
-else:
+with tab2:
     st.header("📂 Upload File CSV")
     st.markdown("Unggah file CSV dengan kolom: **tgl, ot, lat, lon, depth, mag, remark**")
 
@@ -220,6 +216,51 @@ else:
 
         except Exception as e:
             st.error(f"Gagal membaca atau memproses file CSV: {e}")
+
+# ==========================================================
+# === TAB 3: TENTANG APLIKASI ==============================
+# ==========================================================
+with tab3:
+    st.header("📘 Tentang Aplikasi")
+
+    st.markdown("""
+    Aplikasi **Prediksi Kategori Gempa Indonesia** ini dikembangkan untuk mempermudah analisis tingkat kekuatan gempa bumi
+    berdasarkan parameter **magnitudo** dan **kedalaman (depth)** menggunakan pendekatan *Machine Learning*.
+
+    ### 🔍 Dasar Perhitungan
+    Model menggunakan formula empiris:
+    \n> **Indeks Gempa (IG) = mag × (100 − depth) / 100**
+    
+    yang merepresentasikan intensitas relatif antara kekuatan dan kedalaman gempa.
+    Berdasarkan nilai IG inilah model *Random Forest/XGBoost* mengkategorikan gempa menjadi:
+    - Gempa Mikro
+    - Gempa Minor
+    - Gempa Ringan
+    - Gempa Sedang
+    - Gempa Kuat
+    - Gempa Dahsyat
+
+    ### 🧠 Framework Pengembangan
+    Proyek ini mengikuti tahapan **CRISP–DM**:
+    - **Business Understanding** → Pemahaman dampak sosial & mitigasi bencana
+    - **Data Understanding** → Data gempa dari BMKG & USGS (2008–2023)
+    - **Data Preparation** → Pembersihan, standarisasi, dan feature engineering (IG)
+    - **Modeling** → *Random Forest Classifier* dan *XGBoost*
+    - **Evaluation** → Akurasi dan interpretasi kategori
+    - **Deployment** → Implementasi interaktif berbasis Streamlit
+
+    ### 📊 Sumber Data
+    - **BMKG (Badan Meteorologi, Klimatologi, dan Geofisika)**
+    - **USGS Earthquake Catalog**
+    - Rentang tahun **2008–2023**
+
+    ### 👨‍💻 Pengembang
+    - **Nama:** M. Hibban Ramadhan  
+    - **Institusi:** Universitas Lampung  
+    - **Teknologi:** Python, Streamlit, Scikit-Learn, XGBoost, PyDeck  
+
+    ---
+    """)
 
 # ==========================================================
 # === FOOTER ===============================================
