@@ -100,7 +100,7 @@ if st.button("🔍 Prediksi"):
         st.success(f"Kategori Gempa: **{kategori}**")
         st.info(f"Tingkat keyakinan model: **{confidence}**")
 
-        st.caption("Estimasi berdasarkan model pembelajaran mesin CRISP-DM dengan data gempa Indonesia 2008–2023.")
+        st.caption("Estimasi berdasarkan model Machine Learning dengan data gempa Indonesia 2008–2023.")
 
         # --- Peta Interaktif ---
         st.markdown("### 🗺️ Visualisasi Lokasi Gempa")
