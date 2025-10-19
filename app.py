@@ -6,6 +6,7 @@ import gdown
 import os
 import pydeck as pdk
 import datetime
+import matplotlib.pyplot as plt
 
 # --- Konfigurasi Halaman ---
 st.set_page_config(
@@ -97,15 +98,19 @@ if mode == "Input Langsung":
                 kategori = pred[0]
 
             try:
-                probs = model.predict_proba(input_data)
-                prob_max = np.max(probs) * 100
-                confidence = f"{prob_max:.2f}%"
+                probs = model.predict_proba(input_data)[0]
+                df_probs = pd.DataFrame({
+                    "Kategori": le.classes_,
+                    "Probabilitas (%)": (probs * 100).round(2)
+                }).sort_values(by="Probabilitas (%)", ascending=False)
             except Exception:
-                confidence = "N/A"
+                df_probs = None
 
             st.subheader("🌏 Hasil Prediksi:")
             st.success(f"Kategori Gempa: **{kategori}**")
-            st.info(f"Tingkat keyakinan model: **{confidence}**")
+            if df_probs is not None:
+                st.write("### 🔢 Probabilitas Tiap Kategori")
+                st.dataframe(df_probs)
 
             st.caption("Estimasi berdasarkan model pembelajaran mesin CRISP-DM dengan data gempa Indonesia 2008–2023.")
 
@@ -140,20 +145,6 @@ if mode == "Input Langsung":
             tooltip = {"text": "Kategori: {kategori}\nMagnitudo: {mag}"}
             st.pydeck_chart(pdk.Deck(layers=[layer], initial_view_state=view_state, tooltip=tooltip))
 
-            # --- Legenda Warna ---
-            st.markdown("#### 🟢 Legenda Kategori Gempa")
-            legend_html = """
-            <div style='display: flex; flex-wrap: wrap; gap: 8px;'>
-                <div style='background-color: rgb(173,216,230); padding:4px 8px; border-radius:6px;'>Gempa Mikro</div>
-                <div style='background-color: rgb(100,181,246); padding:4px 8px; border-radius:6px;'>Gempa Minor</div>
-                <div style='background-color: rgb(72,201,176); padding:4px 8px; border-radius:6px;'>Gempa Ringan</div>
-                <div style='background-color: rgb(255,204,128); padding:4px 8px; border-radius:6px;'>Gempa Sedang</div>
-                <div style='background-color: rgb(255,167,38); padding:4px 8px; border-radius:6px;'>Gempa Kuat</div>
-                <div style='background-color: rgb(244,67,54); padding:4px 8px; border-radius:6px;'>Gempa Dahsyat</div>
-            </div>
-            """
-            st.markdown(legend_html, unsafe_allow_html=True)
-
         except Exception as e:
             st.error(f"Terjadi kesalahan saat prediksi: {e}")
 
@@ -168,14 +159,13 @@ else:
 
     if uploaded_file is not None:
         try:
-            # --- Coba baca CSV dengan deteksi otomatis ---
+            # --- Coba baca CSV ---
             try:
                 df = pd.read_csv(uploaded_file, delimiter=",")
             except Exception:
                 uploaded_file.seek(0)
                 df = pd.read_csv(uploaded_file, sep="\t")
 
-            # --- Normalisasi nama kolom ---
             df.columns = [c.strip().lower().replace(" ", "_") for c in df.columns]
 
             st.write("### 🧾 Data Awal")
@@ -187,17 +177,43 @@ else:
             else:
                 X = df[["depth", "mag"]].values
                 preds = model.predict(X)
+                probs = model.predict_proba(X)
+
                 kategori = [
                     le.inverse_transform([int(p)])[0] if str(p).isdigit() else str(p)
                     for p in preds
                 ]
                 df["Prediksi Kategori"] = kategori
+                df["Probabilitas Maks (%)"] = (np.max(probs, axis=1) * 100).round(2)
 
                 st.success("✅ Prediksi selesai!")
-                tampil_cols = [col for col in ["tgl", "lat", "lon", "depth", "mag", "remark", "Prediksi Kategori"] if col in df.columns]
+
+                tampil_cols = [col for col in ["tgl", "lat", "lon", "depth", "mag", "remark", "Prediksi Kategori", "Probabilitas Maks (%)"] if col in df.columns]
                 st.dataframe(df[tampil_cols])
 
-                # --- Tombol unduh hasil ---
+                # --- Statistik Distribusi ---
+                st.markdown("### 📊 Distribusi Kategori Gempa")
+                summary = df["Prediksi Kategori"].value_counts().reset_index()
+                summary.columns = ["Kategori", "Jumlah"]
+                summary["Persentase (%)"] = (summary["Jumlah"] / summary["Jumlah"].sum() * 100).round(2)
+                st.dataframe(summary)
+
+                color_map_hex = {
+                    "Gempa Mikro": "#ADD8E6",
+                    "Gempa Minor": "#64B5F6",
+                    "Gempa Ringan": "#48C9B0",
+                    "Gempa Sedang": "#FFCC80",
+                    "Gempa Kuat": "#FFA726",
+                    "Gempa Dahsyat": "#F44336",
+                }
+                colors = [color_map_hex.get(k, "#CCCCCC") for k in summary["Kategori"]]
+
+                fig, ax = plt.subplots()
+                ax.pie(summary["Jumlah"], labels=summary["Kategori"], colors=colors, autopct="%1.1f%%", startangle=90)
+                ax.axis("equal")
+                st.pyplot(fig)
+
+                # --- Unduh hasil ---
                 csv_out = df.to_csv(index=False).encode("utf-8")
                 st.download_button(
                     label="💾 Unduh Hasil Prediksi CSV",
@@ -206,7 +222,7 @@ else:
                     mime="text/csv"
                 )
 
-                # --- Visualisasi Peta ---
+                # --- Peta Interaktif ---
                 st.markdown("### 🗺️ Visualisasi Lokasi Gempa")
                 color_map = {
                     "Gempa Mikro": [173, 216, 230],
