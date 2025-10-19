@@ -156,7 +156,7 @@ if st.button("🔍 Prediksi"):
 st.markdown("<br><hr><br>", unsafe_allow_html=True)
 
 # --- Info Tambahan (tanpa emoji) ---
-with st.expander("ℹ️ Tentang Model"):
+with st.expander("Info Tentang Model"):
     st.markdown("""
     Metodologi pengembangan model mengikuti tahapan **CRISP-DM (Cross Industry Standard Process for Data Mining)**:
     
