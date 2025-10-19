@@ -168,13 +168,14 @@ else:
 
     if uploaded_file is not None:
         try:
-            # Coba deteksi delimiter otomatis
+            # --- Coba baca CSV dengan deteksi otomatis ---
             try:
-                df = pd.read_csv(uploaded_file, sep="\t")
+                df = pd.read_csv(uploaded_file, delimiter=",")
             except Exception:
-                df = pd.read_csv(uploaded_file)
+                uploaded_file.seek(0)
+                df = pd.read_csv(uploaded_file, sep="\t")
 
-            # Normalisasi nama kolom
+            # --- Normalisasi nama kolom ---
             df.columns = [c.strip().lower().replace(" ", "_") for c in df.columns]
 
             st.write("### 🧾 Data Awal")
@@ -193,9 +194,10 @@ else:
                 df["Prediksi Kategori"] = kategori
 
                 st.success("✅ Prediksi selesai!")
-                st.dataframe(df[["tgl", "lat", "lon", "depth", "mag", "remark", "Prediksi Kategori"]])
+                tampil_cols = [col for col in ["tgl", "lat", "lon", "depth", "mag", "remark", "Prediksi Kategori"] if col in df.columns]
+                st.dataframe(df[tampil_cols])
 
-                # Tombol unduh hasil
+                # --- Tombol unduh hasil ---
                 csv_out = df.to_csv(index=False).encode("utf-8")
                 st.download_button(
                     label="💾 Unduh Hasil Prediksi CSV",
