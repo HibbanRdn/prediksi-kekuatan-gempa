@@ -1,9 +1,11 @@
 import streamlit as st
-import pandas as pd
 import numpy as np
+import pandas as pd
 import joblib
+import gdown
 import os
 import pydeck as pdk
+import datetime
 import matplotlib.pyplot as plt
 
 # --- Konfigurasi Halaman ---
@@ -13,65 +15,126 @@ st.set_page_config(
     layout="wide"
 )
 
-# --- Header ---
+# --- Judul Aplikasi ---
 st.markdown(
-    "<h2 style='text-align:center;color:#FF5733;'>🌋 Prediksi Kategori Gempa Indonesia</h2>",
+    "<h1 style='text-align:left; margin-bottom:0;'>🌋 Prediksi Kategori Gempa di Indonesia</h1>",
     unsafe_allow_html=True
 )
+st.write("""
+Aplikasi ini memprediksi kategori gempa berdasarkan **kedalaman (km)** dan **magnitudo (Skala Richter)**.  
+Model dilatih menggunakan algoritma *Random Forest/XGBoost* dengan data gempa Indonesia tahun **2008–2023** (BMKG & USGS).
+""")
 
-# --- Muat Model ---
-MODEL_PATH = "model_rf.pkl"
-if os.path.exists(MODEL_PATH):
+# --- URL Google Drive untuk Model & Encoder ---
+MODEL_URL = "https://drive.google.com/uc?id=1tkqKxH3YQ9wNxMXpbchCF9wcZase-d_Z"
+ENCODER_URL = "https://drive.google.com/uc?id=1pIYTRtB-i2LWXkJu-pqubornaGebSqP4"
+
+MODEL_PATH = "best_model_kategori_gempa.pkl"
+ENCODER_PATH = "label_encoder_kategori_gempa.pkl"
+
+# --- Fungsi untuk download dan load model ---
+@st.cache_resource
+def load_model():
+    if not os.path.exists(MODEL_PATH):
+        with st.spinner("📥 Mengunduh model dari Google Drive..."):
+            gdown.download(MODEL_URL, MODEL_PATH, quiet=False)
+    if not os.path.exists(ENCODER_PATH):
+        with st.spinner("📥 Mengunduh label encoder dari Google Drive..."):
+            gdown.download(ENCODER_URL, ENCODER_PATH, quiet=False)
     model = joblib.load(MODEL_PATH)
-else:
-    st.warning("⚠️ Model belum tersedia, pastikan file 'model_rf.pkl' ada di folder yang sama.")
+    encoder = joblib.load(ENCODER_PATH)
+    return model, encoder
+
+try:
+    model, le = load_model()
+    st.success("✅ Model dan encoder berhasil dimuat!")
+except Exception as e:
+    st.error(f"Gagal memuat model: {e}")
     st.stop()
 
-# --- Fungsi Prediksi ---
-def hitung_kategori_gempa(depth, mag):
-    ig = mag * (100 - depth) / 100
-    if ig < 1:
-        return "Gempa Mikro"
-    elif ig < 3:
-        return "Gempa Minor"
-    elif ig < 5:
-        return "Gempa Ringan"
-    elif ig < 7:
-        return "Gempa Sedang"
-    elif ig < 9:
-        return "Gempa Kuat"
-    else:
-        return "Gempa Dahsyat"
+st.markdown("<br>", unsafe_allow_html=True)
 
-# --- Buat Tab ---
-tab1, tab2, tab3 = st.tabs(["📄 Prediksi Langsung", "📂 Upload CSV", "ℹ️ Info Apps"])
+# ==========================================================
+# === TAB NAVIGASI =========================================
+# ==========================================================
+tab1, tab2, tab3 = st.tabs(["🧾 Input Langsung", "📂 Upload CSV", "📘 Tentang Aplikasi"])
 
-# =======================================================
-# 📄 TAB 1 – INPUT LANGSUNG
-# =======================================================
+# ==========================================================
+# === TAB 1: INPUT LANGSUNG ================================
+# ==========================================================
 with tab1:
-    st.subheader("Masukkan Data Gempa")
+    st.header("🧾 Masukkan Parameter Gempa")
 
     col1, col2 = st.columns(2)
     with col1:
-        depth = st.number_input("Kedalaman (km)", min_value=0.0, max_value=700.0, step=0.1)
+        mag = st.number_input("Magnitudo (Skala Richter)", min_value=0.0, max_value=10.0, value=5.0, step=0.1)
     with col2:
-        mag = st.number_input("Magnitudo (Skala Richter)", min_value=0.0, max_value=10.0, step=0.1)
+        depth = st.number_input("Kedalaman (km)", min_value=0.0, max_value=700.0, value=10.0, step=1.0)
 
-    if st.button("🔍 Prediksi Kategori"):
-        data = pd.DataFrame([[depth, mag]], columns=["depth", "mag"])
-        pred = model.predict(data)[0]
-        kategori = hitung_kategori_gempa(depth, mag)
+    st.markdown("### 🌍 Koordinat Lokasi Gempa")
+    col3, col4 = st.columns(2)
+    with col3:
+        lat = st.number_input("Latitude (Lintang)", min_value=-11.0, max_value=6.0, value=-2.0, step=0.1)
+    with col4:
+        lon = st.number_input("Longitude (Bujur)", min_value=95.0, max_value=142.0, value=118.0, step=0.1)
 
-        st.success(f"✅ Kategori Gempa: **{kategori}** (Model Prediksi: {pred})")
+    if st.button("🔍 Prediksi", use_container_width=True):
+        input_data = np.array([[depth, mag]])
+        try:
+            pred = model.predict(input_data)
+            try:
+                kategori = le.inverse_transform(pred.astype(int))[0]
+            except Exception:
+                kategori = pred[0]
 
-# =======================================================
-# 📂 TAB 2 – UPLOAD CSV
-# =======================================================
+            st.subheader("🌏 Hasil Prediksi:")
+            st.success(f"Kategori Gempa: **{kategori}**")
+
+            st.caption("Estimasi berdasarkan model pembelajaran mesin CRISP-DM dengan data gempa Indonesia 2008–2023.")
+
+            # --- Peta Interaktif ---
+            st.markdown("### 🗺️ Visualisasi Lokasi Gempa")
+            df_map = pd.DataFrame({
+                "latitude": [lat],
+                "longitude": [lon],
+                "kategori": [kategori],
+                "mag": [mag]
+            })
+
+            color_map = {
+                "Gempa Mikro": [173, 216, 230],
+                "Gempa Minor": [100, 181, 246],
+                "Gempa Ringan": [72, 201, 176],
+                "Gempa Sedang": [255, 204, 128],
+                "Gempa Kuat": [255, 167, 38],
+                "Gempa Dahsyat": [244, 67, 54],
+            }
+            color = color_map.get(kategori, [255, 255, 255])
+
+            layer = pdk.Layer(
+                "ScatterplotLayer",
+                data=df_map,
+                get_position='[longitude, latitude]',
+                get_fill_color=color,
+                get_radius=50000,
+                pickable=True,
+            )
+            view_state = pdk.ViewState(latitude=lat, longitude=lon, zoom=5)
+            tooltip = {"text": "Kategori: {kategori}\nMagnitudo: {mag}"}
+            st.pydeck_chart(pdk.Deck(layers=[layer], initial_view_state=view_state, tooltip=tooltip))
+
+        except Exception as e:
+            st.error(f"Terjadi kesalahan saat prediksi: {e}")
+
+# ==========================================================
+# === TAB 2: UPLOAD FILE CSV ===============================
+# ==========================================================
 with tab2:
-    st.subheader("Unggah File CSV Gempa")
+    st.header("📂 Upload File CSV")
+    st.markdown("Unggah file CSV dengan kolom: **tgl, ot, lat, lon, depth, mag, remark**")
 
     uploaded_file = st.file_uploader("Pilih file CSV", type=["csv"])
+
     if uploaded_file is not None:
         try:
             try:
@@ -80,99 +143,154 @@ with tab2:
                 uploaded_file.seek(0)
                 df = pd.read_csv(uploaded_file, sep="\t")
 
+            df.columns = [c.strip().lower().replace(" ", "_") for c in df.columns]
+
+            st.write("### 🧾 Data Awal")
+            st.dataframe(df.head())
+
             required_cols = {"depth", "mag", "lat", "lon"}
             if not required_cols.issubset(df.columns):
                 st.error("❌ Kolom wajib tidak ditemukan. Pastikan ada: depth, mag, lat, lon")
             else:
-                df["Prediksi Model"] = model.predict(df[["depth", "mag"]])
-                df["Prediksi Kategori"] = df.apply(lambda x: hitung_kategori_gempa(x["depth"], x["mag"]), axis=1)
+                X = df[["depth", "mag"]].values
+                preds = model.predict(X)
+                kategori = [
+                    le.inverse_transform([int(p)])[0] if str(p).isdigit() else str(p)
+                    for p in preds
+                ]
+                df["Prediksi Kategori"] = kategori
+
                 st.success("✅ Prediksi selesai!")
 
-                st.dataframe(df.head())
+                tampil_cols = [col for col in ["tgl", "lat", "lon", "depth", "mag", "remark", "Prediksi Kategori"] if col in df.columns]
+                st.dataframe(df[tampil_cols])
 
-                # Ringkasan hasil
+                # --- Statistik Distribusi ---
                 st.markdown("### 📊 Distribusi Kategori Gempa")
                 summary = df["Prediksi Kategori"].value_counts().reset_index()
                 summary.columns = ["Kategori", "Jumlah"]
                 summary["Persentase (%)"] = (summary["Jumlah"] / summary["Jumlah"].sum() * 100).round(2)
                 st.dataframe(summary)
 
-                # Warna kategori
-                color_map = {
-                    "Gempa Mikro": "#ADD8E6",
-                    "Gempa Minor": "#64B5F6",
-                    "Gempa Ringan": "#48C9B0",
-                    "Gempa Sedang": "#FFCC80",
-                    "Gempa Kuat": "#FFA726",
-                    "Gempa Dahsyat": "#F44336",
-                }
+                # --- Bar Chart ---
+                fig, ax = plt.subplots(figsize=(6, 3))
+                ax.bar(summary["Kategori"], summary["Jumlah"], color="#4B9CD3")
+                ax.set_xlabel("Kategori Gempa")
+                ax.set_ylabel("Jumlah")
+                ax.set_title("Distribusi Kategori Gempa", pad=10)
+                plt.xticks(rotation=30)
+                st.pyplot(fig, use_container_width=False)
 
-                colors = [color_map.get(k, "#CCCCCC") for k in summary["Kategori"]]
-                fig, ax = plt.subplots()
-                ax.pie(summary["Jumlah"], labels=summary["Kategori"], colors=colors, autopct="%1.1f%%", startangle=90)
-                ax.axis("equal")
-                st.pyplot(fig)
-
-                # Peta
-                st.markdown("### 🗺️ Peta Sebaran Episentrum")
-                df_map = df[["lat", "lon", "Prediksi Kategori"]]
-                st.pydeck_chart(
-                    pdk.Deck(
-                        map_style="mapbox://styles/mapbox/dark-v11",
-                        initial_view_state=pdk.ViewState(
-                            latitude=df_map["lat"].mean(),
-                            longitude=df_map["lon"].mean(),
-                            zoom=4,
-                            pitch=30,
-                        ),
-                        layers=[
-                            pdk.Layer(
-                                "HeatmapLayer",
-                                data=df_map,
-                                get_position=["lon", "lat"],
-                                opacity=0.6,
-                            ),
-                        ],
-                    )
+                # --- Unduh hasil ---
+                csv_out = df.to_csv(index=False).encode("utf-8")
+                st.download_button(
+                    label="💾 Unduh Hasil Prediksi CSV",
+                    data=csv_out,
+                    file_name="hasil_prediksi_gempa.csv",
+                    mime="text/csv"
                 )
+
+                # --- Peta Interaktif ---
+                st.markdown("### 🗺️ Visualisasi Lokasi Gempa")
+                color_map = {
+                    "Gempa Mikro": [173, 216, 230],
+                    "Gempa Minor": [100, 181, 246],
+                    "Gempa Ringan": [72, 201, 176],
+                    "Gempa Sedang": [255, 204, 128],
+                    "Gempa Kuat": [255, 167, 38],
+                    "Gempa Dahsyat": [244, 67, 54],
+                }
+                df["color"] = df["Prediksi Kategori"].map(lambda x: color_map.get(x, [255, 255, 255]))
+
+                layer = pdk.Layer(
+                    "ScatterplotLayer",
+                    data=df,
+                    get_position='[lon, lat]',
+                    get_fill_color='color',
+                    get_radius=40000,
+                    pickable=True,
+                )
+                view_state = pdk.ViewState(latitude=df["lat"].mean(), longitude=df["lon"].mean(), zoom=4)
+                tooltip = {"text": "Kategori: {Prediksi Kategori}\nMagnitudo: {mag}"}
+                st.pydeck_chart(pdk.Deck(layers=[layer], initial_view_state=view_state, tooltip=tooltip))
+
         except Exception as e:
-            st.error(f"Terjadi kesalahan: {e}")
+            st.error(f"Gagal membaca atau memproses file CSV: {e}")
 
-# =======================================================
-# ℹ️ TAB 3 – INFO APPS
-# =======================================================
+# ==========================================================
+# === TAB 3: TENTANG APLIKASI ==============================
+# ==========================================================
 with tab3:
-    st.subheader("Tentang Aplikasi")
+    st.header("📘 Tentang Aplikasi")
+
     st.markdown("""
-    Aplikasi ini memprediksi **kategori gempa** berdasarkan **kedalaman (km)** dan **magnitudo (Skala Richter)**.  
-    Kategori dihitung menggunakan **Indeks Gempa (IG = mag × (100 – depth) / 100)** dan dipelajari melalui model **Random Forest/XGBoost**.
+    Aplikasi **Prediksi Kategori Gempa Indonesia** ini dikembangkan untuk mempermudah analisis tingkat kekuatan gempa bumi
+    berdasarkan parameter **magnitudo** dan **kedalaman (depth)** menggunakan pendekatan *Machine Learning*.
+
+    ### 🔍 Dasar Perhitungan
+    Model menggunakan formula empiris:
+    \n> **Indeks Gempa (IG) = mag × (100 − depth) / 100**
     
-    Data historis diambil dari catatan gempa Indonesia tahun **2008–2023**.
+    yang merepresentasikan intensitas relatif antara kekuatan dan kedalaman gempa.
+    Berdasarkan nilai IG inilah model *Random Forest/XGBoost* mengkategorikan gempa menjadi:
+    - Gempa Mikro
+    - Gempa Minor
+    - Gempa Ringan
+    - Gempa Sedang
+    - Gempa Kuat
+    - Gempa Dahsyat
+
+    ### 🧠 Framework Pengembangan
+    Proyek ini mengikuti tahapan **CRISP–DM**:
+    - **Business Understanding** → Pemahaman dampak sosial & mitigasi bencana
+    - **Data Understanding** → Data gempa dari BMKG & USGS (2008–2023)
+    - **Data Preparation** → Pembersihan, standarisasi, dan feature engineering (IG)
+    - **Modeling** → *Random Forest Classifier* dan *XGBoost*
+    - **Evaluation** → Akurasi dan interpretasi kategori
+    - **Deployment** → Implementasi interaktif berbasis Streamlit
+
+    ### 📊 Sumber Data
+    - **BMKG (Badan Meteorologi, Klimatologi, dan Geofisika)**
+    - **USGS Earthquake Catalog**
+    - Rentang tahun **2008–2023**
+
+    ### 👨‍💻 Pengembang
+    - **Nama:** M. Hibban Ramadhan  
+    - **Institusi:** Universitas Lampung  
+    - **Teknologi:** Python, Streamlit, Scikit-Learn, XGBoost, PyDeck  
+
+    ---
     """)
+        # ==========================================================
+    # === VISUALISASI DATA HISTORIS GEMPA 2008–2023 ============
+    # ==========================================================
+    st.subheader("🌋 Visualisasi Data Historis Gempa 2008–2023")
 
-    st.divider()
-    st.subheader("📊 Tren Historis Gempa 2008–2023")
-
-    # Contoh data historis (bisa diganti dataset sebenarnya)
+    # --- Contoh visualisasi tren magnitudo per tahun (dummy) ---
     np.random.seed(42)
     tahun = np.arange(2008, 2024)
-    magnitudo = np.random.uniform(4.0, 6.5, len(tahun))
+    magnitudo_rata = np.random.uniform(4.0, 6.5, len(tahun))
 
-    df_tren = pd.DataFrame({"Tahun": tahun, "Rata-rata Magnitudo": magnitudo})
+    df_tren = pd.DataFrame({
+        "Tahun": tahun,
+        "Rata-rata Magnitudo": magnitudo_rata
+    })
 
-    fig, ax = plt.subplots()
-    ax.plot(df_tren["Tahun"], df_tren["Rata-rata Magnitudo"], marker="o", linewidth=2)
+    st.markdown("#### 📈 Tren Rata-rata Magnitudo per Tahun")
+    fig, ax = plt.subplots(figsize=(7, 3))
+    ax.plot(df_tren["Tahun"], df_tren["Rata-rata Magnitudo"], marker="o", color="#4B9CD3", linewidth=2)
     ax.set_xlabel("Tahun")
     ax.set_ylabel("Rata-rata Magnitudo")
-    ax.set_title("Tren Rata-rata Magnitudo Gempa di Indonesia (2008–2023)")
-    st.pyplot(fig)
+    ax.set_title("Tren Gempa Indonesia 2008–2023", pad=10)
+    st.pyplot(fig, use_container_width=False)
 
-    # Heatmap lokasi historis (dummy)
-    st.subheader("🌋 Heatmap Persebaran Gempa")
+    # --- Heatmap Persebaran Lokasi Gempa (dummy) ---
+    st.markdown("#### 🗺️ Heatmap Persebaran Gempa di Indonesia")
     data_heatmap = pd.DataFrame({
-        "lat": np.random.uniform(-10, 6, 200),
-        "lon": np.random.uniform(95, 140, 200),
+        "lat": np.random.uniform(-10, 6, 300),
+        "lon": np.random.uniform(95, 140, 300),
     })
+
     st.pydeck_chart(
         pdk.Deck(
             map_style="mapbox://styles/mapbox/light-v11",
@@ -193,7 +311,7 @@ with tab3:
         )
     )
 
-    st.info("📘 Dikembangkan sebagai proyek analisis dan prediksi gempa berbasis Machine Learning menggunakan Streamlit.")
+    st.caption("Visualisasi ini menggunakan data simulasi 2008–2023 untuk menggambarkan tren dan persebaran gempa di Indonesia.")
 
 
 # ==========================================================
