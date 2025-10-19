@@ -16,12 +16,12 @@ st.set_page_config(
 
 # --- Judul Aplikasi ---
 st.markdown(
-    "<h1 style='text-align:center;'>🌋 Prediksi Kategori Gempa di Indonesia</h1>",
+    "<h1 style='text-align:left; margin-bottom:0;'>🌋 Prediksi Kategori Gempa di Indonesia</h1>",
     unsafe_allow_html=True
 )
 st.write("""
-Aplikasi ini memprediksi **kategori kekuatan gempa** berdasarkan **Magnitudo (Skala Richter)** dan **Kedalaman (km)**.  
-Model ini dilatih menggunakan data gempa Indonesia periode **2008–2023** dengan pendekatan **CRISP-DM**.
+Apps ini memprediksi kategori gempa berdasarkan **kedalaman (km)** dan **magnitudo (Skala Richter)** menggunakan model Random Forest/XGBoost yang dilatih dengan data historis BMKG & USGS.  
+Model dilatih menggunakan algoritma *Random Forest/XGBoost* dengan data gempa Indonesia tahun **2008–2023**.
 """)
 
 # --- URL Google Drive untuk Model & Encoder ---
@@ -50,6 +50,9 @@ try:
 except Exception as e:
     st.error(f"Gagal memuat model: {e}")
     st.stop()
+
+# --- Spacer kecil untuk jarak visual ---
+st.markdown("<br>", unsafe_allow_html=True)
 
 # --- Input Parameter ---
 st.header("🧾 Masukkan Parameter Gempa")
@@ -92,14 +95,14 @@ if st.button("🔍 Prediksi"):
         except Exception:
             confidence = "N/A"
 
-        # --- Tampilkan hasil ---
+        # --- Hasil Prediksi ---
         st.subheader("🌏 Hasil Prediksi:")
         st.success(f"Kategori Gempa: **{kategori}**")
         st.info(f"Tingkat keyakinan model: **{confidence}**")
 
         st.caption("Estimasi berdasarkan model pembelajaran mesin CRISP-DM dengan data gempa Indonesia 2008–2023.")
 
-        # --- PETA INTERAKTIF ---
+        # --- Peta Interaktif ---
         st.markdown("### 🗺️ Visualisasi Lokasi Gempa")
         df_map = pd.DataFrame({
             "latitude": [lat],
@@ -149,16 +152,33 @@ if st.button("🔍 Prediksi"):
     except Exception as e:
         st.error(f"Terjadi kesalahan saat prediksi: {e}")
 
-# --- Info Tambahan ---
+# --- Spacer sebelum bagian info ---
+st.markdown("<br><hr><br>", unsafe_allow_html=True)
+
+# --- Info Tambahan (tanpa emoji) ---
 with st.expander("ℹ️ Tentang Model"):
     st.markdown("""
-    Model dikembangkan menggunakan metodologi **CRISP-DM**:
-    1. **Business Understanding** — Prediksi tingkat kekuatan gempa.
-    2. **Data Understanding** — Dataset katalog gempa Indonesia (2008–2023).
-    3. **Data Preparation** — Fitur utama: `depth` dan `mag`.
-    4. **Modeling** — Algoritma *RandomForest* dan *XGBoost*.
-    5. **Evaluation** — Akurasi > 90% pada data uji.
-    6. **Deployment** — Aplikasi Streamlit Cloud ini.
+    Metodologi pengembangan model mengikuti tahapan **CRISP-DM (Cross Industry Standard Process for Data Mining)**:
+    
+    **1. Business Understanding** — Menentukan tujuan prediksi tingkat kekuatan gempa di Indonesia.  
+    **2. Data Understanding** — Mengumpulkan dan menganalisis data gempa BMKG & USGS (2008–2023).  
+    **3. Data Preparation** — Menyaring dan menormalkan fitur utama: `kedalaman` dan `magnitudo`.  
+    **4. Modeling** — Melatih model menggunakan algoritma *RandomForest* dan *XGBoost*.  
+    **5. Evaluation** — Mengukur akurasi model (>90%) pada data uji.  
+    **6. Deployment** — Implementasi ke aplikasi Streamlit untuk prediksi interaktif.
     """)
 
-st.caption("Dibuat oleh: [Nama Kamu] — Proyek Prediksi Kategori Gempa Indonesia (CRISP-DM)")
+# --- Footer Dinamis ---
+import datetime
+year = datetime.datetime.now().year
+
+st.markdown("<hr>", unsafe_allow_html=True)
+st.markdown(
+    f"""
+    <div style='text-align: center; color: gray; font-size: 0.9rem; margin-top: 10px;'>
+        © {year} <b>M. Hibban Ramadhan</b> — Proyek <i>Prediksi Kategori Gempa Indonesia</i><br>
+        Dibangun menggunakan <a href='https://streamlit.io' target='_blank' style='color: #4b9cd3; text-decoration: none;'>Streamlit</a>
+    </div>
+    """,
+    unsafe_allow_html=True
+)
