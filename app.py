@@ -38,7 +38,6 @@ ENCODER_URL = "https://drive.google.com/uc?id=1pIYTRtB-i2LWXkJu-pqubornaGebSqP4"
 MODEL_PATH = "best_model_kategori_gempa.pkl"
 ENCODER_PATH = "label_encoder_kategori_gempa.pkl"
 
-
 # ==========================================================
 # === FUNGSI LOAD MODEL ====================================
 # ==========================================================
@@ -50,6 +49,7 @@ def load_model():
     if not os.path.exists(ENCODER_PATH):
         with st.spinner("📥 Mengunduh label encoder dari Google Drive..."):
             gdown.download(ENCODER_URL, ENCODER_PATH, quiet=False)
+
     model = joblib.load(MODEL_PATH)
     encoder = joblib.load(ENCODER_PATH)
     return model, encoder
@@ -90,6 +90,7 @@ with tab1:
 
     if st.button("🔍 Prediksi", use_container_width=True):
         input_data = np.array([[depth, mag]])
+
         try:
             pred = model.predict(input_data)
             try:
@@ -118,8 +119,8 @@ with tab1:
                 "Gempa Kuat": [255, 167, 38],
                 "Gempa Dahsyat": [244, 67, 54],
             }
-            color = color_map.get(kategori, [255, 255, 255])
 
+            color = color_map.get(kategori, [255, 255, 255])
             layer = pdk.Layer(
                 "ScatterplotLayer",
                 data=df_map,
@@ -234,42 +235,57 @@ with tab2:
 # ==========================================================
 with tab3:
     st.header("📘 Tentang Aplikasi")
-    st.markdown("""
-    Aplikasi **Prediksi Kategori Gempa Indonesia** ini dikembangkan untuk mempermudah analisis tingkat kekuatan gempa bumi
+
+    # =============================
+    # DESKRIPSI APLIKASI GEMPA
+    # =============================
+    st.title("🌋 Prediksi Kategori Gempa Indonesia")
+
+    st.write("""
+    Aplikasi ini dikembangkan untuk mempermudah analisis tingkat kekuatan gempa bumi
     berdasarkan parameter **magnitudo** dan **kedalaman (depth)** menggunakan pendekatan *Machine Learning*.
+    """)
 
-    ### 🔍 Dasar Perhitungan
-    Model menggunakan formula empiris:
-    \n> **Indeks Gempa (IG) = mag × (100 − depth) / 100**
+    st.subheader("🔍 Dasar Perhitungan")
+    st.latex(r"IG = mag \times \frac{(100 - depth)}{100}")
+    st.write("""
+    Berdasarkan nilai **Indeks Gempa (IG)**, model *Random Forest/XGBoost* akan mengelompokkan
+    gempa ke dalam kategori:
+    """)
 
-    Berdasarkan nilai IG inilah model *Random Forest/XGBoost* mengkategorikan gempa menjadi:
-    - Gempa Mikro  
-    - Gempa Minor  
-    - Gempa Ringan  
-    - Gempa Sedang  
-    - Gempa Kuat  
-    - Gempa Dahsyat
+    st.markdown("""
+    - 🟢 **Gempa Mikro**  
+    - 🟡 **Gempa Minor**  
+    - 🔵 **Gempa Ringan**  
+    - 🟠 **Gempa Sedang**  
+    - 🔴 **Gempa Kuat**  
+    - ⚫ **Gempa Dahsyat**
+    """)
 
-    ### 🧠 Framework Pengembangan
-    Proyek ini mengikuti tahapan **CRISP–DM**:
-    - **Business Understanding** → Pemahaman dampak sosial & mitigasi bencana  
-    - **Data Understanding** → Data gempa dari BMKG & USGS (2008–2023)  
-    - **Data Preparation** → Pembersihan, standarisasi, dan feature engineering (IG)  
-    - **Modeling** → *Random Forest Classifier* dan *XGBoost*  
-    - **Evaluation** → Akurasi dan interpretasi kategori  
-    - **Deployment** → Implementasi interaktif berbasis Streamlit  
+    st.subheader("🧠 Framework Pengembangan — CRISP–DM")
+    st.markdown("""
+    **1. Business Understanding** — Pemahaman dampak sosial & mitigasi bencana  
+    **2. Data Understanding** — Data gempa dari BMKG & USGS (2008–2023)  
+    **3. Data Preparation** — Pembersihan, standarisasi, dan feature engineering (*Indeks Gempa*)  
+    **4. Modeling** — *Random Forest Classifier* dan *XGBoost*  
+    **5. Evaluation** — Akurasi dan interpretasi kategori  
+    **6. Deployment** — Implementasi interaktif berbasis Streamlit
+    """)
 
-    ### 📊 Sumber Data
-    - **BMKG (Badan Meteorologi, Klimatologi, dan Geofisika)**  
+    st.subheader("📊 Sumber Data")
+    st.markdown("""
+    - **BMKG** — Badan Meteorologi, Klimatologi, dan Geofisika  
     - **USGS Earthquake Catalog**  
     - Rentang tahun **2008–2023**
+    """)
 
-    ### 👨‍💻 Pengembang
+    st.subheader("👨‍💻 Pengembang")
+    st.markdown("""
     - **Nama:** M. Hibban Ramadhan  
     - **Institusi:** Universitas Lampung  
-    - **Teknologi:** Python, Streamlit, Scikit-Learn, XGBoost, PyDeck  
-    ---
+    - **Teknologi:** Python, Streamlit, Scikit-Learn, XGBoost, PyDeck
     """)
+    st.divider()
 
     st.subheader("🌋 Visualisasi Data Historis Gempa 2008–2023")
     url = "https://raw.githubusercontent.com/HibbanRdn/prediksi-kekuatan-gempa/refs/heads/main/data/katalog_gempa.csv"
