@@ -23,8 +23,8 @@ MODEL_FILE = "best_model_kategori_gempa.pkl"
 ENCODER_FILE = "label_encoder_kategori_gempa.pkl"
 
 # Ganti dengan file ID dari Google Drive Anda
-MODEL_ID = "1tkqKxH3YQ9wNxMXpbchCF9wcZase-d_Z"      # contoh: "1kY3dqUueLood8WNPU5vK39GZI49D0FpH"
-ENCODER_ID = "1pIYTRtB-i2LWXkJu-pqubornaGebSqP4"  # contoh: "1a2b3c4d5e6f7g8h9i0j"
+MODEL_ID = "1tkqKxH3YQ9wNxMXpbchCF9wcZase-d_Z"
+ENCODER_ID = "1pIYTRtB-i2LWXkJu-pqubornaGebSqP4"
 
 # Unduh jika belum ada
 if not os.path.exists(MODEL_FILE):
@@ -104,8 +104,9 @@ elif mode == "Upload CSV":
 # =============================
 if input_data is not None and st.button("🔍 Prediksi"):
     try:
-        # Prediksi kategori
-        y_pred_num = model.predict(input_data)
+        # Prediksi hanya dengan kolom yang dipakai saat training
+        X_pred = input_data[['depth', 'mag']]
+        y_pred_num = model.predict(X_pred)
         y_pred_str = le.inverse_transform(y_pred_num) if hasattr(le, "inverse_transform") else y_pred_num
         input_data['Kategori'] = y_pred_str
 
@@ -115,7 +116,7 @@ if input_data is not None and st.button("🔍 Prediksi"):
         # Probabilitas per baris (jika tersedia)
         if hasattr(model, "predict_proba"):
             st.subheader("📈 Probabilitas Prediksi")
-            prob = model.predict_proba(input_data)
+            prob = model.predict_proba(X_pred)
             for i, idx in enumerate(input_data.index):
                 fig, ax = plt.subplots()
                 ax.bar(le.classes_, prob[i], color="skyblue")
@@ -126,7 +127,7 @@ if input_data is not None and st.button("🔍 Prediksi"):
                     ax.text(j, v+0.02, f"{v*100:.1f}%", ha="center")
                 st.pyplot(fig)
 
-        # Peta
+        # Peta lokasi tetap pakai latitude & longitude
         st.subheader("🗺️ Peta Lokasi")
         layer = pdk.Layer(
             "ScatterplotLayer",
