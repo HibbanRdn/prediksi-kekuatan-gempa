@@ -8,14 +8,18 @@ import pydeck as pdk
 import datetime
 import matplotlib.pyplot as plt
 
-# --- Konfigurasi Halaman ---
+# ==========================================================
+# === KONFIGURASI HALAMAN ==================================
+# ==========================================================
 st.set_page_config(
     page_title="Prediksi Kategori Gempa Indonesia",
     page_icon="🌋",
     layout="wide"
 )
 
-# --- Judul Aplikasi ---
+# ==========================================================
+# === JUDUL APLIKASI =======================================
+# ==========================================================
 st.markdown(
     "<h1 style='text-align:left; margin-bottom:0;'>🌋 Prediksi Kategori Gempa di Indonesia</h1>",
     unsafe_allow_html=True
@@ -25,14 +29,19 @@ Aplikasi ini memprediksi kategori gempa berdasarkan **kedalaman (km)** dan **mag
 Model dilatih menggunakan algoritma *Random Forest/XGBoost* dengan data gempa Indonesia tahun **2008–2023** (BMKG & USGS).
 """)
 
-# --- URL Google Drive untuk Model & Encoder ---
+# ==========================================================
+# === URL GOOGLE DRIVE UNTUK MODEL ==========================
+# ==========================================================
 MODEL_URL = "https://drive.google.com/uc?id=1tkqKxH3YQ9wNxMXpbchCF9wcZase-d_Z"
 ENCODER_URL = "https://drive.google.com/uc?id=1pIYTRtB-i2LWXkJu-pqubornaGebSqP4"
 
 MODEL_PATH = "best_model_kategori_gempa.pkl"
 ENCODER_PATH = "label_encoder_kategori_gempa.pkl"
 
-# --- Fungsi untuk download dan load model ---
+
+# ==========================================================
+# === FUNGSI LOAD MODEL ====================================
+# ==========================================================
 @st.cache_resource
 def load_model():
     if not os.path.exists(MODEL_PATH):
@@ -44,6 +53,7 @@ def load_model():
     model = joblib.load(MODEL_PATH)
     encoder = joblib.load(ENCODER_PATH)
     return model, encoder
+
 
 try:
     model, le = load_model()
@@ -89,7 +99,6 @@ with tab1:
 
             st.subheader("🌏 Hasil Prediksi:")
             st.success(f"Kategori Gempa: **{kategori}**")
-
             st.caption("Estimasi berdasarkan model pembelajaran mesin CRISP-DM dengan data gempa Indonesia 2008–2023.")
 
             # --- Peta Interaktif ---
@@ -119,6 +128,7 @@ with tab1:
                 get_radius=50000,
                 pickable=True,
             )
+
             view_state = pdk.ViewState(latitude=lat, longitude=lon, zoom=5)
             tooltip = {"text": "Kategori: {kategori}\nMagnitudo: {mag}"}
             st.pydeck_chart(pdk.Deck(layers=[layer], initial_view_state=view_state, tooltip=tooltip))
@@ -200,6 +210,7 @@ with tab2:
                     "Gempa Kuat": [255, 167, 38],
                     "Gempa Dahsyat": [244, 67, 54],
                 }
+
                 df["color"] = df["Prediksi Kategori"].map(lambda x: color_map.get(x, [255, 255, 255]))
 
                 layer = pdk.Layer(
@@ -210,6 +221,7 @@ with tab2:
                     get_radius=40000,
                     pickable=True,
                 )
+
                 view_state = pdk.ViewState(latitude=df["lat"].mean(), longitude=df["lon"].mean(), zoom=4)
                 tooltip = {"text": "Kategori: {Prediksi Kategori}\nMagnitudo: {mag}"}
                 st.pydeck_chart(pdk.Deck(layers=[layer], initial_view_state=view_state, tooltip=tooltip))
@@ -222,7 +234,6 @@ with tab2:
 # ==========================================================
 with tab3:
     st.header("📘 Tentang Aplikasi")
-
     st.markdown("""
     Aplikasi **Prediksi Kategori Gempa Indonesia** ini dikembangkan untuk mempermudah analisis tingkat kekuatan gempa bumi
     berdasarkan parameter **magnitudo** dan **kedalaman (depth)** menggunakan pendekatan *Machine Learning*.
@@ -230,96 +241,97 @@ with tab3:
     ### 🔍 Dasar Perhitungan
     Model menggunakan formula empiris:
     \n> **Indeks Gempa (IG) = mag × (100 − depth) / 100**
-    
-    yang merepresentasikan intensitas relatif antara kekuatan dan kedalaman gempa.
+
     Berdasarkan nilai IG inilah model *Random Forest/XGBoost* mengkategorikan gempa menjadi:
-    - Gempa Mikro
-    - Gempa Minor
-    - Gempa Ringan
-    - Gempa Sedang
-    - Gempa Kuat
+    - Gempa Mikro  
+    - Gempa Minor  
+    - Gempa Ringan  
+    - Gempa Sedang  
+    - Gempa Kuat  
     - Gempa Dahsyat
 
     ### 🧠 Framework Pengembangan
     Proyek ini mengikuti tahapan **CRISP–DM**:
-    - **Business Understanding** → Pemahaman dampak sosial & mitigasi bencana
-    - **Data Understanding** → Data gempa dari BMKG & USGS (2008–2023)
-    - **Data Preparation** → Pembersihan, standarisasi, dan feature engineering (IG)
-    - **Modeling** → *Random Forest Classifier* dan *XGBoost*
-    - **Evaluation** → Akurasi dan interpretasi kategori
-    - **Deployment** → Implementasi interaktif berbasis Streamlit
+    - **Business Understanding** → Pemahaman dampak sosial & mitigasi bencana  
+    - **Data Understanding** → Data gempa dari BMKG & USGS (2008–2023)  
+    - **Data Preparation** → Pembersihan, standarisasi, dan feature engineering (IG)  
+    - **Modeling** → *Random Forest Classifier* dan *XGBoost*  
+    - **Evaluation** → Akurasi dan interpretasi kategori  
+    - **Deployment** → Implementasi interaktif berbasis Streamlit  
 
     ### 📊 Sumber Data
-    - **BMKG (Badan Meteorologi, Klimatologi, dan Geofisika)**
-    - **USGS Earthquake Catalog**
+    - **BMKG (Badan Meteorologi, Klimatologi, dan Geofisika)**  
+    - **USGS Earthquake Catalog**  
     - Rentang tahun **2008–2023**
 
     ### 👨‍💻 Pengembang
     - **Nama:** M. Hibban Ramadhan  
     - **Institusi:** Universitas Lampung  
     - **Teknologi:** Python, Streamlit, Scikit-Learn, XGBoost, PyDeck  
-
     ---
     """)
-    
+
     st.subheader("🌋 Visualisasi Data Historis Gempa 2008–2023")
     url = "https://raw.githubusercontent.com/HibbanRdn/prediksi-kekuatan-gempa/refs/heads/main/data/katalog_gempa.csv"
+
     try:
         df_hist = pd.read_csv(url)
         df_hist.columns = [c.strip().lower().replace(" ", "_") for c in df_hist.columns]
         df_hist = df_hist.dropna(subset=["lat", "lon", "mag"])
+
         if "tgl" in df_hist.columns:
             df_hist["year"] = pd.to_datetime(df_hist["tgl"], errors="coerce").dt.year
         elif "tanggal" in df_hist.columns:
             df_hist["year"] = pd.to_datetime(df_hist["tanggal"], errors="coerce").dt.year
         else:
-            df_hist["year"] = df_hist.index  # fallback 
-    tren = df_hist.groupby("year")["mag"].mean().reset_index().dropna()
-    st.markdown("#### 📈 Tren Rata-rata Magnitudo per Tahun")
-    fig1, ax1 = plt.subplots(figsize=(7, 3))
-    ax1.plot(tren["year"], tren["mag"], marker="o", color="#4B9CD3", linewidth=2)
-    ax1.set_xlabel("Tahun")
-    ax1.set_ylabel("Rata-rata Magnitudo")
-    ax1.set_title("Tren Gempa Indonesia 2008-2023", pad=10)
-    st.pyplot(fig1, use_container_width=False)
+            df_hist["year"] = df_hist.index  # fallback
 
-    # --- Heatmap berbasis magnitudo ---
-    st.markdown("#### 🗺️ Heatmap Persebaran Gempa Berdasarkan Magnitudo")
-    st.pydeck_chart(
-        pdk.Deck(
-            map_style="https://basemaps.cartocdn.com/gl/positron-gl-style/style.json",
-            initial_view_state=pdk.ViewState(
-                latitude=df_hist["lat"].mean(),
-                longitude=df_hist["lon"].mean(),
-                zoom=4,
-                pitch=30,
-            ),
-            layers=[
-                pdk.Layer(
-                    "HeatmapLayer",
-                    data=df_hist,
-                    get_position=["lon", "lat"],
-                    get_weight="mag",
-                    radiusPixels=50,
-                    intensity=1,
-                    threshold=0.05,
-                    opacity=0.6,
+        tren = df_hist.groupby("year")["mag"].mean().reset_index().dropna()
+
+        st.markdown("#### 📈 Tren Rata-rata Magnitudo per Tahun")
+        fig1, ax1 = plt.subplots(figsize=(7, 3))
+        ax1.plot(tren["year"], tren["mag"], marker="o", color="#4B9CD3", linewidth=2)
+        ax1.set_xlabel("Tahun")
+        ax1.set_ylabel("Rata-rata Magnitudo")
+        ax1.set_title("Tren Gempa Indonesia 2008-2023", pad=10)
+        st.pyplot(fig1, use_container_width=False)
+
+        # --- Heatmap berbasis magnitudo ---
+        st.markdown("#### 🗺️ Heatmap Persebaran Gempa Berdasarkan Magnitudo")
+        st.pydeck_chart(
+            pdk.Deck(
+                map_style="https://basemaps.cartocdn.com/gl/positron-gl-style/style.json",
+                initial_view_state=pdk.ViewState(
+                    latitude=df_hist["lat"].mean(),
+                    longitude=df_hist["lon"].mean(),
+                    zoom=4,
+                    pitch=30,
                 ),
-            ],
+                layers=[
+                    pdk.Layer(
+                        "HeatmapLayer",
+                        data=df_hist,
+                        get_position=["lon", "lat"],
+                        get_weight="mag",
+                        radiusPixels=50,
+                        intensity=1,
+                        threshold=0.05,
+                        opacity=0.6,
+                    ),
+                ],
+            )
         )
-    )
-    st.caption("Visualisasi ini menggunakan data historis 2008–2023 dari GitHub, berdasarkan magnitudo gempa di Indonesia.")
-        except Exception as e:
+        st.caption("Visualisasi ini menggunakan data historis 2008–2023 dari GitHub, berdasarkan magnitudo gempa di Indonesia.")
+
+    except Exception as e:
         st.warning(f"❌ Tidak dapat memuat data historis: {e}")
-
-
-
 
 # ==========================================================
 # === FOOTER ===============================================
 # ==========================================================
 st.markdown("<br><hr><br>", unsafe_allow_html=True)
 year = datetime.datetime.now().year
+
 st.markdown(
     f"""
     <div style='text-align: center; color: gray; font-size: 0.9rem; margin-top: 10px;'>
@@ -329,4 +341,3 @@ st.markdown(
     """,
     unsafe_allow_html=True
 )
-
