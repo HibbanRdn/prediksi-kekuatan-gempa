@@ -20,8 +20,8 @@ st.markdown(
     unsafe_allow_html=True
 )
 st.write("""
-Apps ini memprediksi kategori gempa berdasarkan **kedalaman (km)** dan **magnitudo (Skala Richter)**. (**Indeks Gempa (IG = mag*(100-depth)/100)**) 
-Model dilatih menggunakan algoritma *Random Forest/XGBoost* dengan data gempa Indonesia tahun **2008–2023**. (Data historis BMKG & USGS)
+Apps ini memprediksi kategori gempa berdasarkan **kedalaman (km)** dan **magnitudo (Skala Richter)**.  
+Model dilatih menggunakan algoritma *Random Forest/XGBoost* dengan data gempa Indonesia tahun **2008–2023**.
 """)
 
 # --- URL Google Drive untuk Model & Encoder ---
@@ -63,7 +63,7 @@ with col1:
 with col2:
     depth = st.number_input("Kedalaman (km)", min_value=0.0, max_value=700.0, value=10.0, step=1.0)
 
-st.markdown("### 🌍 (Opsional) Koordinat Lokasi Gempa")
+st.markdown("### 🌍 Koordinat Lokasi Gempa")
 col3, col4 = st.columns(2)
 with col3:
     lat = st.number_input("Latitude (Lintang)", min_value=-11.0, max_value=6.0, value=-2.0, step=0.1)
