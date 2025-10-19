@@ -319,7 +319,7 @@ with tab3:
                     latitude=df_hist["lat"].mean(),
                     longitude=df_hist["lon"].mean(),
                     zoom=4,
-                    pitch=30,
+                    pitch=0,
                 ),
                 layers=[
                     pdk.Layer(
