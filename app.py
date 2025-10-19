@@ -100,7 +100,7 @@ with tab1:
 
             st.subheader("🌏 Hasil Prediksi:")
             st.success(f"Kategori Gempa: **{kategori}**")
-            st.caption("Estimasi berdasarkan model pembelajaran mesin CRISP-DM dengan data gempa Indonesia 2008–2023.")
+            st.caption("Estimasi berdasarkan model Machine Learning dengan data gempa Indonesia 2008–2023.")
 
             # --- Peta Interaktif ---
             st.markdown("### 🗺️ Visualisasi Lokasi Gempa")
