@@ -21,7 +21,7 @@ st.markdown(
     unsafe_allow_html=True
 )
 st.write("""
-Apps ini memprediksi kategori gempa berdasarkan **kedalaman (km)** dan **magnitudo (Skala Richter)**.   
+Apps ini memprediksi kategori gempa berdasarkan **kedalaman (km)** dan **magnitudo (Skala Richter)**.  
 Model dilatih menggunakan algoritma *Random Forest/XGBoost* dengan data gempa Indonesia tahun **2008–2023**. (**Data historis BMKG & USGS**)
 """)
 
@@ -86,31 +86,13 @@ if mode == "Input Langsung":
         input_data = np.array([[depth, mag]])
         try:
             pred = model.predict(input_data)
-            kategori = None
-
             try:
-                if pred.dtype.kind in ("i", "u", "f"):
-                    kategori = le.inverse_transform(pred.astype(int))[0]
-                else:
-                    first = pred[0]
-                    kategori = first if first in getattr(le, "classes_", []) else first
+                kategori = le.inverse_transform(pred.astype(int))[0]
             except Exception:
                 kategori = pred[0]
 
-            try:
-                probs = model.predict_proba(input_data)[0]
-                df_probs = pd.DataFrame({
-                    "Kategori": le.classes_,
-                    "Probabilitas (%)": (probs * 100).round(2)
-                }).sort_values(by="Probabilitas (%)", ascending=False)
-            except Exception:
-                df_probs = None
-
             st.subheader("🌏 Hasil Prediksi:")
             st.success(f"Kategori Gempa: **{kategori}**")
-            if df_probs is not None:
-                st.write("### 🔢 Probabilitas Tiap Kategori")
-                st.dataframe(df_probs)
 
             st.caption("Estimasi berdasarkan model pembelajaran mesin CRISP-DM dengan data gempa Indonesia 2008–2023.")
 
@@ -159,7 +141,6 @@ else:
 
     if uploaded_file is not None:
         try:
-            # --- Coba baca CSV ---
             try:
                 df = pd.read_csv(uploaded_file, delimiter=",")
             except Exception:
@@ -177,18 +158,15 @@ else:
             else:
                 X = df[["depth", "mag"]].values
                 preds = model.predict(X)
-                probs = model.predict_proba(X)
-
                 kategori = [
                     le.inverse_transform([int(p)])[0] if str(p).isdigit() else str(p)
                     for p in preds
                 ]
                 df["Prediksi Kategori"] = kategori
-                df["Probabilitas Maks (%)"] = (np.max(probs, axis=1) * 100).round(2)
 
                 st.success("✅ Prediksi selesai!")
 
-                tampil_cols = [col for col in ["tgl", "lat", "lon", "depth", "mag", "remark", "Prediksi Kategori", "Probabilitas Maks (%)"] if col in df.columns]
+                tampil_cols = [col for col in ["tgl", "lat", "lon", "depth", "mag", "remark", "Prediksi Kategori"] if col in df.columns]
                 st.dataframe(df[tampil_cols])
 
                 # --- Statistik Distribusi ---
@@ -198,20 +176,14 @@ else:
                 summary["Persentase (%)"] = (summary["Jumlah"] / summary["Jumlah"].sum() * 100).round(2)
                 st.dataframe(summary)
 
-                color_map_hex = {
-                    "Gempa Mikro": "#ADD8E6",
-                    "Gempa Minor": "#64B5F6",
-                    "Gempa Ringan": "#48C9B0",
-                    "Gempa Sedang": "#FFCC80",
-                    "Gempa Kuat": "#FFA726",
-                    "Gempa Dahsyat": "#F44336",
-                }
-                colors = [color_map_hex.get(k, "#CCCCCC") for k in summary["Kategori"]]
-
-                fig, ax = plt.subplots()
-                ax.pie(summary["Jumlah"], labels=summary["Kategori"], colors=colors, autopct="%1.1f%%", startangle=90)
-                ax.axis("equal")
-                st.pyplot(fig)
+                # --- Bar Chart ---
+                fig, ax = plt.subplots(figsize=(6, 3))
+                ax.bar(summary["Kategori"], summary["Jumlah"], color="#4B9CD3")
+                ax.set_xlabel("Kategori Gempa")
+                ax.set_ylabel("Jumlah")
+                ax.set_title("Distribusi Kategori Gempa", pad=10)
+                plt.xticks(rotation=30)
+                st.pyplot(fig, use_container_width=False)
 
                 # --- Unduh hasil ---
                 csv_out = df.to_csv(index=False).encode("utf-8")
@@ -250,26 +222,10 @@ else:
             st.error(f"Gagal membaca atau memproses file CSV: {e}")
 
 # ==========================================================
-# === INFO TAMBAHAN ========================================
-# ==========================================================
-st.markdown("<br><hr><br>", unsafe_allow_html=True)
-with st.expander("Info Tentang Model"):
-    st.markdown("""
-    Metodologi pengembangan model mengikuti tahapan **CRISP-DM (Cross Industry Standard Process for Data Mining)**:
-    
-    **1. Business Understanding** — Menentukan tujuan prediksi tingkat kekuatan gempa di Indonesia.  
-    **2. Data Understanding** — Mengumpulkan dan menganalisis data gempa BMKG & USGS (2008–2023).  
-    **3. Data Preparation** — Menyaring dan menormalkan fitur utama: `kedalaman` dan `magnitudo`.  
-    **4. Modeling** — Melatih model menggunakan algoritma *RandomForest* dan *XGBoost*.  
-    **5. Evaluation** — Mengukur akurasi model (>90%) pada data uji.  
-    **6. Deployment** — Implementasi ke aplikasi Streamlit untuk prediksi interaktif.
-    """)
-
-# ==========================================================
 # === FOOTER ===============================================
 # ==========================================================
+st.markdown("<br><hr><br>", unsafe_allow_html=True)
 year = datetime.datetime.now().year
-st.markdown("<hr>", unsafe_allow_html=True)
 st.markdown(
     f"""
     <div style='text-align: center; color: gray; font-size: 0.9rem; margin-top: 10px;'>
