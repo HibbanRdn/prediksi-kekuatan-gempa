@@ -21,7 +21,7 @@ st.markdown(
 )
 st.write("""
 Apps ini memprediksi kategori gempa berdasarkan **kedalaman (km)** dan **magnitudo (Skala Richter)**. (Indeks Gempa = mag*(100-depth)/100)  
-Model dilatih menggunakan algoritma *Random Forest/XGBoost* dengan data gempa Indonesia tahun **2008–2023**.
+Model dilatih menggunakan algoritma *Random Forest/XGBoost* dengan data gempa Indonesia tahun **2008–2023**. (**Data historis BMKG & USGS**)
 """)
 
 # --- URL Google Drive untuk Model & Encoder ---
